@@ -1,0 +1,30 @@
+
+Seamless Terrain + "instant" terrain generation:
+
+- generate terrain heightmap in CS, send to blank SRV ...done!
+--- which thread-size : thread-count ratio is optimal?
+  - what res to make the heightmap?
+
+- terrain = heightmapped Tessellationmesh (probably equal spacing not fractional) done!
+
+clouds- flat quad + vertical billboard above, rgba density & lighting 'PBR' (textures)
+- - rain as geo shader particles
+
+FOLIAGE
+- 32x32 scale @ 56x56 resolution is fine for trees --<4:7 ratio>
+-- 5 scale //<1:9 ratio> for grass? --
+keep scale static, only resolution matters
+ - render trees farther than grass; separate meshes, maybe separate shaders for each
+
+-    ( move sunlight calculation to 'per-vertex'? )
+- tada!
+- regenerate terrain and recenter camera when camera position > 2/3 or 3/4 of the whole plane <- kinda done this. 
+-  --^ switch this to be based on view angle instead.
+-  --  -- kinda done this, needs work
+
+- what kind of lod scale? - log10 would be nice? done!
+
+why is lofi scree texture dark? (prob bc of bit depth or something)
+
+- move exponential height to the generation function  <- done!
+- Quad trees are hard -_-
