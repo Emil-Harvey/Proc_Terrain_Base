@@ -14,6 +14,10 @@ protected:
 		int day;
 		int padding = 0;
 	};
+	struct PositionBufferType {
+		XMFLOAT4 position;
+	};
+
 public:
 	CloudShader(ID3D11Device* device, HWND hwnd);
 	~CloudShader();
@@ -25,8 +29,9 @@ private:
 
 private:
 	ID3D11Buffer* matrixBuffer;
-	//ID3D11Buffer* SECONDmatrixBuffer;// be
+	ID3D11Buffer* cameraBuffer;// be
 	ID3D11Buffer* variableBuffer;
 	ID3D11SamplerState* sampleState;
+
 };
 

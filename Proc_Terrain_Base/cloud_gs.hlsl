@@ -45,6 +45,7 @@ float hash(float x, float y)// random value betwn -1 & 1
 
 //pre-define func
 void generateQuad(float4 wp, OutputType output, float quadSize, bool wind, inout TriangleStream<OutputType> triStream);
+float perlin(float4 world_position);
 
 [maxvertexcount(6)]
 void main(point InputType input[1], inout TriangleStream<OutputType> triStream)
@@ -61,7 +62,7 @@ void main(point InputType input[1], inout TriangleStream<OutputType> triStream)
     //const float gravity = -9.8; // acceleration add air resistance?
     const float4 particle_speed = { 0, -2000, 0, 0 };//{ 0, 0 + gravity * particle_age, 0, 0};
     const float4 particle_displacement = particle_speed * particle_age * 0.5;
-    /*const*/ float4 particle_position = input[0].world_position + particle_displacement;
+    /*const*/ float4 particle_position = input[0].world_position + particle_displacement; //+ float4(camera_pos.x,0, camera_pos.z, 0);
     //if (particle_position.y < -100)
     //    particle_position.y += 400;// test floor
     particle_position.y = 100 + particle_position.y % 500;
@@ -84,7 +85,7 @@ void generateQuad(float4 wp, OutputType output, float quadSize, bool wind, inout
     float3 rightVector = cross(normalize(fwdVector), upVector);  //float3(viewMatrix[0][0], viewMatrix[1][0],viewMatrix[2][0]);
     //float3 rightVector = normalize(float3(2.83 * perlin(wp + 2.1235), 0, 1.83 * perlin(wp + 6.3211)));// variation
     float3 displacementVector = float3(0, 0, 0); // top verts
-    /// if (wind) { displacementVector.x += perlin(wp + (timeOfYear * 600)); }
+    //if (wind) { displacementVector.x += perlin(wp + (timeOfYear * 600)); }
     
 
     upVector *= 8; // so the width & height of the quad are 2:2 while not being centered on the pivot
@@ -170,4 +171,84 @@ void generateQuad(float4 wp, OutputType output, float quadSize, bool wind, inout
     triStream.Append(output);
 
     triStream.RestartStrip();
+}
+
+
+
+
+///////////////////////--------------------------//////////////////////////
+///                          perlin noise!
+///////////////////////--------------------------//////////////////////////
+
+float interpolate(float a0, float a1, float w)
+{
+    return pow(w, 2.0) * (3.0 - 2.0 * w) * (a1 - a0) + a0;
+} //*/
+
+
+
+/* Create random direction vector
+ */
+float2 gradient(int x, int y)
+{
+    // makes the random gradients for the given grid coordinate
+    float seed = 21732.37f;
+    float random = (seed / 100) * sin(x * (seed / 11.0923) + y * (seed / 2.62349) + seed / 32.12379) * cos(x * (seed / 8.812934) * y + y * y * seed + (seed / 23.792173));
+    //float random = sin(x + y) * cos(x * y);
+    float2 ret;
+    ret.x = (float)cos(random);
+    ret.y = (float)sin(random);
+    return ret;
+}
+
+// Computes the dot product of the distance and gradient vectors.
+float dotGradient(int ix, int iy, float x, float y)
+{
+    // Get gradient from integer coordinates
+    float2 grad = gradient(ix, iy);
+
+    //distance to the given grid point 
+    float xDistance = x - (float)ix;
+    float yDistance = y - (float)iy;
+
+    //dot-product of the distance & gradient vectors
+    return (xDistance * grad.x + yDistance * grad.y);
+}
+
+float perlin(float4 world_position)
+{
+    float x = abs(world_position.x);
+    float y = abs(world_position.z);
+
+    int x0 = (int)x;
+    int x1 = x0 + 1;
+    int y0 = (int)y;
+    int y1 = y0 + 1;
+
+    // get interpolation weights based on proximity
+    float xWeight = x - (float)x0;
+    float yWeight = y - (float)y0;
+
+    // interpolate between grid point gradients
+    float n0, n1, i0, i1, value;
+
+    n0 = dotGradient(x0, y0, x, y);
+    n1 = dotGradient(x1, y0, x, y);
+    i0 = interpolate(n0, n1, xWeight);
+
+    n0 = dotGradient(x0, y1, x, y);
+    n1 = dotGradient(x1, y1, x, y);
+    i1 = interpolate(n0, n1, xWeight);
+
+    value = interpolate(i0, i1, yWeight);
+    return value;
+}
+float bfm(float4 coords, int octaves)
+{
+    float val = 0;
+    for (int o = 0; o < octaves; o++)
+    {
+        val += perlin(coords * pow(2, o)) / pow(2, o);
+    }
+    return val;
 }

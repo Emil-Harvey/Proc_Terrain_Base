@@ -10,6 +10,7 @@ App1::App1()
 	textureShader = nullptr;
 	terrainShader = nullptr;
 	sunShader = nullptr;
+	cloudShader = nullptr;
 	horBlur = nullptr;
 	verBlur = nullptr;
 	csLand = nullptr;
@@ -69,7 +70,7 @@ void App1::init(HINSTANCE hinstance, HWND hwnd, int screenWidth, int screenHeigh
 
 	f_Terrain = new PlaneMesh(renderer->getDevice(), renderer->getDeviceContext(), 280);
 
-	m_clouds = new PlaneMesh(renderer->getDevice(), renderer->getDeviceContext(), 36);
+	m_clouds = new PlaneMesh(renderer->getDevice(), renderer->getDeviceContext(), 16);
 
 	vars.LODfar = 23;//
 	vars.Scale = 3;
@@ -231,7 +232,7 @@ void App1::firstPass()
 {
 	// Set the render target to be the render to texture.
 	preDOFRT->setRenderTarget(renderer->getDeviceContext());
-	preDOFRT->clearRenderTarget(renderer->getDeviceContext(), 1.0f, 1.0f, 1.0f, 1.0f);
+	preDOFRT->clearRenderTarget(renderer->getDeviceContext(), 0.10f, 0.10f, 0.10f, 1.0f);
 
 
 	XMMATRIX worldMatrix, viewMatrix, projectionMatrix;
@@ -340,7 +341,7 @@ void App1::firstPass()
 			renderMinimap();
 		}
 	}
-	const XMMATRIX xPositionMatrix = XMMatrixTranslation(xMeshOffset, 0.0, xz_TerrainMeshOffset);// replace "chunk" w/ "Xoffset" or something;
+	const XMMATRIX xPositionMatrix = XMMatrixTranslation(xMeshOffset, 0.0, xz_TerrainMeshOffset);// 
 	const XMMATRIX zPositionMatrix = XMMatrixTranslation(xz_TerrainMeshOffset, 0.0, zMeshOffset);// 
 	const XMMATRIX xzPositionMatrix = XMMatrixTranslation(xMeshOffset, 0.0, zMeshOffset);
 
@@ -386,7 +387,7 @@ void App1::firstPass()
 	textureShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(XMMatrixMultiply(worldMatrix, XMMatrixRotationX(0)), XMMatrixMultiply(XMMatrixMultiply(terrainScaleMatrix, XMMatrixScaling(2.0, 1.0, 02.0)), XMMatrixTranslation(-6400, 300.0, -6400.0))), viewMatrix, projectionMatrix, cloudTexture, vars.TimeOfYear);
 	textureShader->render(renderer->getDeviceContext(), m_clouds->getIndexCount());
 	//																																																																								cloudTexture
-	cloudShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(XMMatrixMultiply(worldMatrix, XMMatrixRotationX(0)), XMMatrixMultiply(XMMatrixMultiply(terrainScaleMatrix, XMMatrixScaling(0.92, 1.0, 0.92)), XMMatrixTranslation(-2400, 300.0, -2400.0))), viewMatrix, projectionMatrix, rainTexture, vars.TimeOfYear);
+	cloudShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(XMMatrixMultiply(worldMatrix, XMMatrixRotationX(0)), XMMatrixMultiply(XMMatrixMultiply(terrainScaleMatrix, XMMatrixScaling(0.32, 1.0, 0.32)), XMMatrixTranslation(-300+ camera->getPosition().x, 300.0, -300.0 + -300+ camera->getPosition().z))), viewMatrix, projectionMatrix, rainTexture, vars.TimeOfYear);
 	cloudShader->render(renderer->getDeviceContext(), m_clouds->getIndexCount());
 	renderer->setAlphaBlending(false);
 
@@ -763,6 +764,6 @@ void App1::initTextures() {
 	cloudTexture = textureMgr->getTexture(L"cloud");
 	textureMgr->loadTexture(L"rain", L"res/nice textures/rain.png");
 	rainTexture = textureMgr->getTexture(L"rain");
-	//textureMgr->loadTexture(L"poopoo", L"res/test.png");
-	//cloudTexture = textureMgr->getTexture(L"poopoo");
+	//textureMgr->loadTexture(L"foo", L"res/test.png");
+	//cloudTexture = textureMgr->getTexture(L"foo");
 }

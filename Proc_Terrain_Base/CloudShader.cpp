@@ -7,7 +7,7 @@ CloudShader::CloudShader(ID3D11Device* device, HWND hwnd) : TextureShader(device
 	//if (textured)
 	//	initShader(L"texture_vs.cso", L"texture_ps.cso");
 	//else
-	initShader(L"tess_vs.cso",L"cloud_gs.cso", L"texture_ps.cso");// sky / sun mode
+	initShader(L"tess_vs.cso",L"cloud_gs.cso", L"texture_ps.cso");// 
 }
 
 
@@ -43,6 +43,7 @@ void CloudShader::initShader(const wchar_t* vsFilename, const wchar_t* gsFilenam
 {
 	D3D11_BUFFER_DESC matrixBufferDesc;
 	D3D11_BUFFER_DESC variableBufferDesc;//
+	D3D11_BUFFER_DESC cameraBufferDesc;//
 	D3D11_SAMPLER_DESC samplerDesc;
 
 	// Load (+ compile) shader files
@@ -61,8 +62,8 @@ void CloudShader::initShader(const wchar_t* vsFilename, const wchar_t* gsFilenam
 	// Create the constant buffer pointer so we can access the vertex shader constant buffer from within this class.
 	renderer->CreateBuffer(&matrixBufferDesc, NULL, &matrixBuffer);//SECONDmatrixBuffer
 
-	//renderer->CreateBuffer(&matrixBufferDesc, NULL, &SECONDmatrixBuffer);
-
+	//
+	
 	// Setup the description of the VARIABLES buffer .
 	variableBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
 	variableBufferDesc.ByteWidth = sizeof(timeBuffer);///
@@ -73,6 +74,17 @@ void CloudShader::initShader(const wchar_t* vsFilename, const wchar_t* gsFilenam
 
 	// Create the constant buffer pointer so we can access the ~ shader constant buffer from within this class.
 	renderer->CreateBuffer(&variableBufferDesc, NULL, &variableBuffer);
+
+	// Setup the description of the Camera buffer .
+	cameraBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+	cameraBufferDesc.ByteWidth = sizeof(PositionBufferType);///
+	cameraBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	cameraBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	cameraBufferDesc.MiscFlags = 0;
+	cameraBufferDesc.StructureByteStride = 0;
+
+	// Create the constant buffer pointer so we can access the geo shader constant buffer from within this class.
+	renderer->CreateBuffer(&cameraBufferDesc, NULL, &cameraBuffer);
 
 	// Create a texture sampler state description.
 	samplerDesc.Filter = D3D11_FILTER_ANISOTROPIC;///D3D11_FILTER_MIN_MAG_MIP_POINT;///        // anti-aliasing mode.
@@ -113,15 +125,17 @@ void CloudShader::setShaderParameters(ID3D11DeviceContext* deviceContext, const 
 	deviceContext->Unmap(matrixBuffer, 0);
 	deviceContext->VSSetConstantBuffers(0, 1, &matrixBuffer);
 	deviceContext->GSSetConstantBuffers(1, 1, &matrixBuffer);
-	// Send matrix data
-//	result = deviceContext->Map(SECONDmatrixBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
-//	dataPtr = (MatrixBufferType*)mappedResource.pData;
-//	dataPtr->world = tworld;// worldMatrix;
-//	dataPtr->view = tview;
-//	dataPtr->projection = tproj;
-//	deviceContext->Unmap(SECONDmatrixBuffer, 0);
+	
 
-//	deviceContext->PSSetConstantBuffers(1, 1, &SECONDmatrixBuffer);
+	// Send pos data to geo shader
+	PositionBufferType* posPtr;
+	deviceContext->Map(cameraBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+	posPtr = (PositionBufferType*)mappedResource.pData;
+	auto inverse = XMMatrixInverse(&XMMatrixDeterminant(viewMatrix), viewMatrix);
+	XMStoreFloat4(&posPtr->position, inverse.r[3]);
+
+	deviceContext->Unmap(cameraBuffer, 0);
+	deviceContext->GSSetConstantBuffers(2, 1, &cameraBuffer);
 
 	// Send variable data
 	result = deviceContext->Map(variableBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
