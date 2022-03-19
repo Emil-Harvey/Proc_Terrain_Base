@@ -107,32 +107,33 @@ void main(int3 groupThreadID : SV_GroupThreadID,
     const half prevailingWindX = -tan(abs(1 * latitude) + (3.14159 * 0.5)) / 5.0; //
     float2 offset = gradient(coords.x, coords.y);
     float2 wind = normalize(float2(prevailingWindX + offset.x, prevailingWindY + offset.y));//
-    /*
+    
     float humidity = 0;// calculate humidity 
+    //*
     if (height <= 0)
         humidity = 99;// underwater, duh
     else {
         float h_attenuation = 10.0 / 1.0; // how far humidity is carried from 'water sources' 
         float positionOffset = 50;
-        while (h_attenuation > 1) {//       this causes stress on the GPU
+        while (h_attenuation > 1) {//       this causes stress on the GPU? <- debug settings were enabled in properties
             
             float a = get_terrain_height(coords + (-wind * positionOffset), 1.0);
             a *= a*a;// cube it
             humidity -= h_attenuation * ((a>0)? (0.2/scale)*a:(15/scale)*a);
-            h_attenuation = h_attenuation - 0.5;//pow(h_attenuation, 0.98)
+            h_attenuation = h_attenuation - 0.5;//pow(h_attenuation, 0.98) // 
             positionOffset = 1.05 * positionOffset + 350;
         }
-        humidity = min(humidity, 4.0);
+        humidity = max(min(humidity, 4.0),0.0);
     }
-    */
+    //*/
     //float3 normal = calculateNormal(coords.xz, 10.0); unnecessary(?) just sample heightmap per vertex instead
 
 	float4 output = float4(0, 0, 1, 1);
 
 	[unroll]    /// what does this do
 
-    output.a = height ;
-    output.r = macro_height;//sqrt(humidity/1.0); /// 
+    output.a = height;
+    output.r = sqrt(humidity/1.0); /// macro_height;//
 
     ///output.g = 0.3 * height / manipulationDetails.z;
     output.b = 0.09 * height / (1+pow(manipulationDetails.z,3));
@@ -151,7 +152,7 @@ void main(int3 groupThreadID : SV_GroupThreadID,
             + (gInput[dispatchThreadID.xy + (wind.xy * 7)].r * 0.4)
             + (gInput[dispatchThreadID.xy + (wind.xy * 11)].r * 0.25)
             + (gInput[dispatchThreadID.xy + (wind.xy * 16)].r * 0.1);
-
+        output.r /= 400;
         gOutput[dispatchThreadID.xy] = output;
     }
 }

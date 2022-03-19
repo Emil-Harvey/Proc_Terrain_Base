@@ -15,6 +15,7 @@
 #include "CloudShader.h"
 #include "TerrainShader.h"//<-- tesselating terrain mesh
 #include "ShaderVariables.h"
+#include "TnDepthShader.h"
 #include "ComputeBlurHor.h"
 #include "ComputeBlurVert.h"
 #include "ComputeLandscape.h"
@@ -33,6 +34,7 @@ protected:
 
 	bool render();
 	bool renderMinimap();
+	void depthPass();
 	void renderDOF();
 	void firstPass();
 	void finalPass();
@@ -51,10 +53,12 @@ private:
 	TextureShader* textureShader;
 	TerrainShader* terrainShader;
 	CloudShader* cloudShader;//
+	TnDepthShader* depthShader;
 
 	ComputeBlurHor* horBlur;
 	ComputeBlurVert* verBlur;
 	RenderTexture* preDOFRT;
+	ShadowMap* cameraDepth;
 
 	ComputeLandscape* csLand;
 
@@ -66,7 +70,7 @@ private:
 	float xz_TerrainMeshOffset = -1920;//	(half of terrain width - 1920 @ 16 res): 3840x3 = 11520 
 	TessellationPlane* m_Water;
 	PlaneMesh* m_clouds;
-	int Water_Mesh_Res = 16;
+	int Water_Mesh_Res = 48;
 	SphereMesh* sphere;
 
 	Light* light;

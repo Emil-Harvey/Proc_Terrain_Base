@@ -36,21 +36,21 @@ float4 main(InputType input) : SV_TARGET
 
    
         ///     Dithering Shader                                             
-    //float thres = 0.5 + 0.5*noise(float2(input.tex.x*14,input.tex.y)); //0.50+ 0.25*( sin(input.tex.x*3201.32) + sin(input.tex.y*1801.18) );//0.5 * (0 + bfm(input.tex.xxyy*998.3, 13));//
-    // int rX = 1368;int rY = 743;     int x = ((input.tex.x * rX) % 2); int y = ((input.tex.y * rY) % 2);
+    //float thres = 0.5 + 0.25*noise(float2(input.tex.x*14,input.tex.y)); //0.50+ 0.25*( sin(input.tex.x*3201.32) + sin(input.tex.y*1801.18) );//0.5 * (0 + bfm(input.tex.xxyy*998.3, 13));//
+    // int rX = 400;int rY = 300;     int x = ((input.tex.x * rX) % 2); int y = ((input.tex.y * rY) % 2);
     //float thres = 0.23 + (abs(3*x - 2*y) / 9.0);// 0.50 + 0.5 * 
-    //float bits = 2.0;
+    //float bits = 3.0;
     //textureColour.rgb = float3(int3((textureColour.rgb +thres) * bits)) / bits;
-    //if (textureColour.r > thres) textureColour.r = 0.70;
+    //if (textureColour.r > thres) textureColour.r = 0.870;
     //else textureColour.r = 0.1850;
-    //if (textureColour.g > thres) textureColour.g = 0.90;
+    //if (textureColour.g*1.1 > thres) textureColour.g = 0.490;
     //else textureColour.g = 0.2150;
-    //if (textureColour.b > thres) textureColour.b = 0.890;
+    //if (textureColour.b*0.85 > thres) textureColour.b = 0.580;
     //else textureColour.b = 0.150;
         /// monochrome:
-    //if (length(textureColour.rgb)/*0*/ > thres) textureColour.rgb = float3(0.3, 0.7, 0.4);// 1.0;// 
-    //else textureColour.rgb = float3(0.1,0.06,0.09);// 0.0;// 
-    //textureColour.rgb = thres;
+    //if (length(textureColour.rgb)/*0*/ > thres) textureColour.rgb = float3(0.83, 0.37, 0.64);// 1.0;// 
+    //else textureColour.rgb = float3(0.01,0.106,0.09);// 0.0;// 
+    ///textureColour.rgb = thres;
 
     //textureColour.a = length(textureColour.rgb);
     clip(textureColour.a < 0.00623 ? -1 : 1);

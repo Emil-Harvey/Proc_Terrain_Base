@@ -245,14 +245,14 @@ OutputType main(ConstantOutputType input, float2 uvwCoord : SV_DomainLocation, c
     output.world_position.y += max(output.snowness * output.steepness - 0.5, 0) * scale;
 
     // absolute humidity - relative humidity is less meaningful///          <-- fix this algorithm?
-    output.humidity = 
+    /*output.humidity =
         ((output.temperature - minGlobalTemp) * 0.02// rep 1* w abs
             + (dot(output.wind, -aspect) *0.0)  ); // rainshadow effect - it is more humid on slopes that face the wind
         //+ perlin(seedc.xz / (scale * 99)) +1    
-        //)/ altitude ; // 
-output.humidity = pow((output.humidity - 0.5) * 1.75, 5) + 0.5;// shift most values closer to 0.5
+        //)/ altitude ; //
+output.humidity = pow((output.humidity - 0.5) * 1.75, 5) + 0.5;// shift most values closer to 0.5 */
 
-//output.humidity = heightmapSampled.r;
+output.humidity = heightmapSampled.r;
     }
 // noise to determine between plains and woodland, slightly higher chance of the former
     output.noise2 =  saturate(output.humidity * pow(1 - bfm(seedc.xz / (scale * 29), 4), 3));

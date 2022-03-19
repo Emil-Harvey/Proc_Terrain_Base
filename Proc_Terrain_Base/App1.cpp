@@ -60,7 +60,7 @@ void App1::init(HINSTANCE hinstance, HWND hwnd, int screenWidth, int screenHeigh
 	cloudShader = new CloudShader(renderer->getDevice(), hwnd);
 
 	// initialise RT objects. 
-	preDOFRT = new RenderTexture(renderer->getDevice(), screenWidth, screenHeight, /*400,300,*/ 0.1f, 100.f);
+	preDOFRT = new RenderTexture(renderer->getDevice(), /*screenWidth, screenHeight,*/ 400,300, 0.1f, 100.f);
 
 
 	m_Terrain = new TessellationPlane(renderer->getDevice(), renderer->getDeviceContext(), terrainResolution);
@@ -190,6 +190,9 @@ bool App1::frame()
 		
 	}
 
+	// Generate the view matrix based on the camera's position.
+	camera->update();
+
 	// Render the graphics.
 	result = render();
 	if (!result) { return false; }
@@ -227,6 +230,86 @@ bool App1::renderMinimap()
 	return true;
 }
 
+void App1::depthPass()
+{	/// OPTIMISE: move duplicate variables to render() function
+
+	cameraDepth->BindDsvAndSetNullRenderTarget(renderer->getDeviceContext());
+
+	
+	XMMATRIX worldMatrix, viewMatrix, projectionMatrix;
+	const XMMATRIX positionMatrix = XMMatrixTranslation(xz_TerrainMeshOffset, 0.0, xz_TerrainMeshOffset);
+	 
+	// Get the world, view, projection, and ortho matrices from the camera and Direct3D objects.
+	worldMatrix = renderer->getWorldMatrix();
+	viewMatrix = camera->getViewMatrix();
+	projectionMatrix = (renderLODchunks ? renderer->getOrthoMatrix() : renderer->getProjectionMatrix());// renderer->getOrthoMatrix();//getProjectionMatrix();//
+
+	static const XMMATRIX terrainScaleMatrix = XMMatrixScaling(256, 1.0, 256);// 4096.0 / terrainResolution // 4096 may be incorrect, it may also be x^2 or something
+	const XMMATRIX m_TerrainMatrix = XMMatrixMultiply(terrainScaleMatrix, positionMatrix);
+
+	/// main terrain
+	m_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);//													
+	terrainShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(worldMatrix, m_TerrainMatrix), viewMatrix, projectionMatrix, textures, light, camera, &vars, csLand->getSRV());// XMFLOAT4(tessellationFactor, height * 100, LODnear, LODfar), scale, XMFLOAT2(xOffset, yOffset), timeOfYear);
+	terrainShader->render(renderer->getDeviceContext(), m_Terrain->getIndexCount());
+
+	/* foliage (geo shader)
+	if (floraOn) {
+		//renderer->setAlphaBlending(true);
+		f_Terrain->sendData(renderer->getDeviceContext());//worldMatrix//m_TerrainMatrix)
+		treeShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(worldMatrix, XMMatrixMultiply(XMMatrixScaling(5, 1.0, 5), XMMatrixTranslation(int(camera->getPosition().x) - 700.0, 0, int(camera->getPosition().z) - 700.0))), viewMatrix, projectionMatrix, trees, light, camera, &vars, csLand->getSRV());
+		treeShader->render(renderer->getDeviceContext(), f_Terrain->getIndexCount());
+		//renderer->setAlphaBlending(false);
+	}*/
+
+	/// neighbouring terrains
+	float xMeshOffset;
+	float zMeshOffset;
+	//const int chunk = 1920;
+	if (camera->getPosition().x < 0/*fmod(camera->getRotation().y, 360) >= 180 || fmod(camera->getRotation().y, 360) < -180*/)// negative x (west)
+	{
+		xMeshOffset = xz_TerrainMeshOffset * 3;
+	}
+	else {// east
+		xMeshOffset = xz_TerrainMeshOffset * -1;
+	}
+	if (camera->getPosition().z < 0)// negative z (south)
+	{
+		zMeshOffset = xz_TerrainMeshOffset * 3;
+	}
+	else {// north
+		zMeshOffset = xz_TerrainMeshOffset * -1;
+	}
+	const XMMATRIX xPositionMatrix = XMMatrixTranslation(xMeshOffset, 0.0, xz_TerrainMeshOffset);// 
+	const XMMATRIX zPositionMatrix = XMMatrixTranslation(xz_TerrainMeshOffset, 0.0, zMeshOffset);// 
+	const XMMATRIX xzPositionMatrix = XMMatrixTranslation(xMeshOffset, 0.0, zMeshOffset);
+
+	XMMATRIX neighbourWorldMatrix;
+
+	// X TERRAIN
+	neighbourWorldMatrix = XMMatrixMultiply(worldMatrix, XMMatrixMultiply(terrainScaleMatrix, xPositionMatrix));
+	x_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
+	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csLand->getSRV());
+	terrainShader->render(renderer->getDeviceContext(), x_Terrain->getIndexCount());
+	// Z TERRAIN
+	neighbourWorldMatrix = XMMatrixMultiply(worldMatrix, XMMatrixMultiply(terrainScaleMatrix, zPositionMatrix));
+	z_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
+	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csLand->getSRV());
+	terrainShader->render(renderer->getDeviceContext(), z_Terrain->getIndexCount());
+	// XZ TERRAIN
+	neighbourWorldMatrix = XMMatrixMultiply(worldMatrix, XMMatrixMultiply(terrainScaleMatrix, xzPositionMatrix));
+	xz_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
+	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csLand->getSRV());//XMFLOAT4(tessellationFactor, height * 100, LODnear, LODfar), scale, XMFLOAT2(xOffset, yOffset), timeOfYear);
+	terrainShader->render(renderer->getDeviceContext(), xz_Terrain->getIndexCount());
+
+
+
+	// Set back buffer as render target and reset view port.
+	renderer->setBackBufferRenderTarget();
+	renderer->resetViewport();
+	
+
+}
+
 
 void App1::firstPass()
 {
@@ -255,8 +338,7 @@ void App1::firstPass()
 	renderer->beginScene(0.3, 0.3, 0.3, 1.0f);
 	light->setDiffuseColour(1, 0.98, 0.96, 1.0);
 
-	// Generate the view matrix based on the camera's position.
-	camera->update();
+	
 
 	// Get the world, view, projection, and ortho matrices from the camera and Direct3D objects.
 	worldMatrix = renderer->getWorldMatrix();
@@ -387,8 +469,8 @@ void App1::firstPass()
 	textureShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(XMMatrixMultiply(worldMatrix, XMMatrixRotationX(0)), XMMatrixMultiply(XMMatrixMultiply(terrainScaleMatrix, XMMatrixScaling(2.0, 1.0, 02.0)), XMMatrixTranslation(-6400, 300.0, -6400.0))), viewMatrix, projectionMatrix, cloudTexture, vars.TimeOfYear);
 	textureShader->render(renderer->getDeviceContext(), m_clouds->getIndexCount());
 	//																																																																								cloudTexture
-	cloudShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(XMMatrixMultiply(worldMatrix, XMMatrixRotationX(0)), XMMatrixMultiply(XMMatrixMultiply(terrainScaleMatrix, XMMatrixScaling(0.32, 1.0, 0.32)), XMMatrixTranslation(-300+ camera->getPosition().x, 300.0, -300.0 + -300+ camera->getPosition().z))), viewMatrix, projectionMatrix, rainTexture, vars.TimeOfYear);
-	cloudShader->render(renderer->getDeviceContext(), m_clouds->getIndexCount());
+	//cloudShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(XMMatrixMultiply(worldMatrix, XMMatrixRotationX(0)), XMMatrixMultiply(XMMatrixMultiply(terrainScaleMatrix, XMMatrixScaling(0.32, 1.0, 0.32)), XMMatrixTranslation(-300+ camera->getPosition().x, 300.0, -300.0 + -300+ camera->getPosition().z))), viewMatrix, projectionMatrix, rainTexture, vars.TimeOfYear);
+	//cloudShader->render(renderer->getDeviceContext(), m_clouds->getIndexCount());
 	renderer->setAlphaBlending(false);
 
 	// Set back buffer as render target and reset view port.
@@ -447,7 +529,7 @@ void App1::gui()
 	ImGui::Checkbox("Wireframe mode", &wireframeToggle);
 
 	ImGui::Checkbox("Toggle Flora", &floraOn);
-	ImGui::Checkbox("Render LOD Chunks", &renderLODchunks);
+	ImGui::Checkbox("(ortho view) Render LOD Chunks", &renderLODchunks);
 	//ImGui::SliderFloat("thingy", &test, 0.51, 1.999);
 	
 	if (ImGui::CollapsingHeader("Terrain Generation Settings##")) {/// TERRAIN GEN
@@ -649,61 +731,64 @@ void App1::initTextures() {
 	//}
 	
 	//auto xzzj = textures;
-
-	textureMgr->loadTexture(L"rock_c", L"res/lofi textures/rock_/rock_c.png");
-	textureMgr->loadTexture(L"rock_h", L"res/lofi textures/rock_/rock_h.png");
-	textureMgr->loadTexture(L"rock_n", L"res/lofi textures/rock_/rock_n.png");
-	textureMgr->loadTexture(L"rock_s", L"res/lofi textures/rock_/rock_s.png");
+//*
+	textureMgr->loadTexture(L"rock_c", L"res/nice textures/rock_/rock_c.png");
+	textureMgr->loadTexture(L"rock_h", L"res/nice textures/rock_/rock_h.png");
+	textureMgr->loadTexture(L"rock_n", L"res/nice textures/rock_/rock_n.png");
+	textureMgr->loadTexture(L"rock_s", L"res/nice textures/rock_/rock_s.png");
 	//
-	textureMgr->loadTexture(L"snow_c", L"res/lofi textures/snow_/snow_c.png");
-	textureMgr->loadTexture(L"snow_h", L"res/lofi textures/snow_/snow_h.png");
-	textureMgr->loadTexture(L"snow_n", L"res/lofi textures/snow_/snow_n.png");
-	textureMgr->loadTexture(L"snow_s", L"res/lofi textures/snow_/snow_s.png");
+	textureMgr->loadTexture(L"snow_c", L"res/nice textures/snow_/snow_c.png");
+	textureMgr->loadTexture(L"snow_h", L"res/nice textures/snow_/snow_h.png");
+	textureMgr->loadTexture(L"snow_n", L"res/nice textures/snow_/snow_n.png");
+	textureMgr->loadTexture(L"snow_s", L"res/nice textures/snow_/snow_s.png");
 	//
-	textureMgr->loadTexture(L"grass_c", L"res/lofi textures/grass_/grass_c.png");
-	textureMgr->loadTexture(L"grass_h", L"res/lofi textures/grass_/grass_h.png");
-	textureMgr->loadTexture(L"grass_n", L"res/lofi textures/grass_/grass_n.png");
-	textureMgr->loadTexture(L"grass_s", L"res/lofi textures/grass_/grass_s.png");
+	textureMgr->loadTexture(L"grass_c", L"res/nice textures/grass_/grass_c.png");
+	textureMgr->loadTexture(L"grass_h", L"res/nice textures/grass_/grass_h.png");
+	textureMgr->loadTexture(L"grass_n", L"res/nice textures/grass_/grass_n.png");
+	textureMgr->loadTexture(L"grass_s", L"res/nice textures/grass_/grass_s.png");
 	//
-	textureMgr->loadTexture(L"stone_c", L"res/lofi textures/stone_/stone_c.png");
-	textureMgr->loadTexture(L"stone_h", L"res/lofi textures/stone_/stone_h.png");
-	textureMgr->loadTexture(L"stone_n", L"res/lofi textures/stone_/stone_n.png");
-	textureMgr->loadTexture(L"stone_s", L"res/lofi textures/stone_/stone_s.png");
+	textureMgr->loadTexture(L"stone_c", L"res/nice textures/stone_/stone_c.png");
+	textureMgr->loadTexture(L"stone_h", L"res/nice textures/stone_/stone_h.png");
+	textureMgr->loadTexture(L"stone_n", L"res/nice textures/stone_/stone_n.png");
+	textureMgr->loadTexture(L"stone_s", L"res/nice textures/stone_/stone_s.png");
 	//
-	textureMgr->loadTexture(L"mulch_c", L"res/lofi textures/mulch_/mulch_c.png");
-	textureMgr->loadTexture(L"mulch_h", L"res/lofi textures/mulch_/mulch_h.png");
-	textureMgr->loadTexture(L"mulch_n", L"res/lofi textures/mulch_/mulch_n.png");
-	textureMgr->loadTexture(L"mulch_s", L"res/lofi textures/mulch_/mulch_s.png");
+	textureMgr->loadTexture(L"mulch_c", L"res/nice textures/mulch_/mulch_c.png");
+	textureMgr->loadTexture(L"mulch_h", L"res/nice textures/mulch_/mulch_h.png");
+	textureMgr->loadTexture(L"mulch_n", L"res/nice textures/mulch_/mulch_n.png");
+	textureMgr->loadTexture(L"mulch_s", L"res/nice textures/mulch_/mulch_s.png");
 	//
-	textureMgr->loadTexture(L"sand_c", L"res/lofi textures/sand_/sand_c.png");
-	textureMgr->loadTexture(L"sand_h", L"res/lofi textures/sand_/sand_h.png");
-	textureMgr->loadTexture(L"sand_n", L"res/lofi textures/sand_/sand_n.png");
-	textureMgr->loadTexture(L"sand_s", L"res/lofi textures/sand_/sand_s.png");
+	textureMgr->loadTexture(L"sand_c", L"res/nice textures/sand_/sand_c.png");
+	textureMgr->loadTexture(L"sand_h", L"res/nice textures/sand_/sand_h.png");
+	textureMgr->loadTexture(L"sand_n", L"res/nice textures/sand_/sand_n.png");
+	textureMgr->loadTexture(L"sand_s", L"res/nice textures/sand_/sand_s.png");
 	//
-	textureMgr->loadTexture(L"gravel_c", L"res/lofi textures/gravel_/gravel_c.png");
-	textureMgr->loadTexture(L"gravel_h", L"res/lofi textures/gravel_/gravel_h.png");
-	textureMgr->loadTexture(L"gravel_n", L"res/lofi textures/gravel_/gravel_n.png");
-	textureMgr->loadTexture(L"gravel_s", L"res/lofi textures/gravel_/gravel_s.png");
+	textureMgr->loadTexture(L"gravel_c", L"res/nice textures/gravel_/gravel_c.png");
+	textureMgr->loadTexture(L"gravel_h", L"res/nice textures/gravel_/gravel_h.png");
+	textureMgr->loadTexture(L"gravel_n", L"res/nice textures/gravel_/gravel_n.png");
+	textureMgr->loadTexture(L"gravel_s", L"res/nice textures/gravel_/gravel_s.png");
 	//
-	textureMgr->loadTexture(L"water_c", L"res/lofi textures/water_/water_c.png");
-	textureMgr->loadTexture(L"water_h", L"res/lofi textures/water_/water_h.png");
-	textureMgr->loadTexture(L"water_n", L"res/lofi textures/water_/water_n.png");
-	textureMgr->loadTexture(L"water_s", L"res/lofi textures/water_/water_s.png");//
+	textureMgr->loadTexture(L"water_c", L"res/nice textures/water_/water_c.png");
+	textureMgr->loadTexture(L"water_h", L"res/nice textures/water_/water_h.png");
+	textureMgr->loadTexture(L"water_n", L"res/nice textures/water_/water_n.png");
+	textureMgr->loadTexture(L"water_s", L"res/nice textures/water_/water_s.png");//
 	//
-	textureMgr->loadTexture(L"savan_c", L"res/lofi textures/savan_/savan_c.png");
-	textureMgr->loadTexture(L"savan_h", L"res/lofi textures/savan_/savan_h.png");
-	textureMgr->loadTexture(L"savan_n", L"res/lofi textures/savan_/savan_n.png");
-	textureMgr->loadTexture(L"savan_s", L"res/lofi textures/savan_/savan_s.png");
-
-
-	//for (int t = 0; t < 4; t++) { //		 does not work either
-	//	for (int m = 0; m < 8; m++) {
-	//		std::wstring name = std::wstring(material[m]) + std::wstring(type[t]);
-	//		// put the texture in the array ready for the shader
-	//		textures[m + (t * 8)] = textureMgr->getTexture(name.c_str());
-	//	}
-	//}
-
+	textureMgr->loadTexture(L"savan_c", L"res/nice textures/savan_/savan_c.png");
+	textureMgr->loadTexture(L"savan_h", L"res/nice textures/savan_/savan_h.png");
+	textureMgr->loadTexture(L"savan_n", L"res/nice textures/savan_/savan_n.png");
+	textureMgr->loadTexture(L"savan_s", L"res/nice textures/savan_/savan_s.png");
+//*/
+/*
+	for (int t = 0; t < 4; t++) { //		 does not work either
+		for (int m = 0; m < 8; m++) {
+			std::wstring name = std::wstring(material[m]) + std::wstring(type[t]);
+			// put the texture in the array ready for the shader
+			auto gggg0 = name.c_str();
+			bool wat = gggg0 == name;
+			textures[m + (t * 8)] = textureMgr->getTexture(gggg0);
+			int x = m;
+		}
+	}
+//*/
 	// albedo maps (c for colour)
 	textures[0] = textureMgr->getTexture(L"grass_c");
 	textures[1] = textureMgr->getTexture(L"stone_c");
@@ -743,7 +828,7 @@ void App1::initTextures() {
 	textures[29] = textureMgr->getTexture(L"sand_s");
 	textures[30] = textureMgr->getTexture(L"mulch_s");
 	textures[31] = textureMgr->getTexture(L"gravel_s");
-
+	
 	textures[32] = textureMgr->getTexture(L"savan_c");
 	textures[33] = textureMgr->getTexture(L"savan_h");
 	textures[34] = textureMgr->getTexture(L"savan_n");
