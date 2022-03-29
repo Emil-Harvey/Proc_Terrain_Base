@@ -94,7 +94,7 @@ float4 main(InputType input) : SV_TARGET
     }
     else if (input.treeType == 1)
         textureColour = trees[1].Sample(s0, input.tex);
-    else if (input.treeType == 2)
+    else if (input.treeType < 2.9)
         textureColour = trees[2].Sample(s0, input.tex);
     else
         textureColour = trees[3].Sample(s0, input.tex);
@@ -107,7 +107,7 @@ float4 main(InputType input) : SV_TARGET
         textureColour.g *= input.colourMultiplier.g;
 
     }
-    //textureColour.rgb *= textureColour.a;// avoid whitened edges
+    textureColour.rgb *= textureColour.a;// avoid whitened edges
 
 
    
@@ -117,5 +117,5 @@ float4 main(InputType input) : SV_TARGET
 
     lightColour = (sunlight.ambient + lightColour);//calculateLighting(-lightDirection, input.normal, diffuseColour));
 	
-    return lightColour;//textureColour; //* 2 * 
+    return textureColour * lightColour;//* 2 * //
 }

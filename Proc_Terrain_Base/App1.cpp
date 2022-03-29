@@ -60,8 +60,8 @@ void App1::init(HINSTANCE hinstance, HWND hwnd, int screenWidth, int screenHeigh
 	cloudShader = new CloudShader(renderer->getDevice(), hwnd);
 
 	// initialise RT objects. 
-	preDOFRT = new RenderTexture(renderer->getDevice(), /*screenWidth, screenHeight,*/ 400,300, 0.1f, 100.f);
-
+	preDOFRT = new RenderTexture(renderer->getDevice(), screenWidth, screenHeight, /*400,300,*/ 0.1f, 100.f);
+	cameraDepth = new ShadowMap(renderer->getDevice(), screenWidth, screenHeight);
 
 	m_Terrain = new TessellationPlane(renderer->getDevice(), renderer->getDeviceContext(), terrainResolution);
 	x_Terrain = new TessellationPlane(renderer->getDevice(), renderer->getDeviceContext(), terrainResolution);
@@ -73,7 +73,7 @@ void App1::init(HINSTANCE hinstance, HWND hwnd, int screenWidth, int screenHeigh
 	m_clouds = new PlaneMesh(renderer->getDevice(), renderer->getDeviceContext(), 16);
 
 	vars.LODfar = 23;//
-	vars.Scale = 3;
+	vars.Scale = 7;
 	vars.PlanetDiameter = 127420;// a 1/1000th of earth
 
 	// Initialise light
@@ -201,6 +201,7 @@ bool App1::frame()
 }
 bool App1::render()
 {
+	//depthPass();
 	//renderMinimap();///	<--	give this function inputs so fewer duplicate vars are calculated
 
 	firstPass();
@@ -227,6 +228,16 @@ bool App1::renderMinimap()
 	csLand->compute(renderer->getDeviceContext(), 60, 60, 1);
 	csLand->unbind(renderer->getDeviceContext());
 	
+/*	// horiontal pass using unblurred copy of the scene
+	horBlur->setShaderParameters(renderer->getDeviceContext(), csLand->getSRV());
+	horBlur->compute(renderer->getDeviceContext(), ceil(60 / 256.f), 60, 1);
+	horBlur->unbind(renderer->getDeviceContext());/// 
+
+	verBlur->setShaderParameters(renderer->getDeviceContext(), horBlur->getSRV());//preDOFRT->getShaderResourceView()
+	verBlur->compute(renderer->getDeviceContext(), 60, ceil(60 / 256.f), 1);
+	verBlur->unbind(renderer->getDeviceContext());/// works!
+*/
+	
 	return true;
 }
 
@@ -249,7 +260,7 @@ void App1::depthPass()
 
 	/// main terrain
 	m_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);//													
-	terrainShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(worldMatrix, m_TerrainMatrix), viewMatrix, projectionMatrix, textures, light, camera, &vars, csLand->getSRV());// XMFLOAT4(tessellationFactor, height * 100, LODnear, LODfar), scale, XMFLOAT2(xOffset, yOffset), timeOfYear);
+	terrainShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(worldMatrix, m_TerrainMatrix), viewMatrix, projectionMatrix, textures, light, camera, &vars, /*verBlur->getSRV()*/csLand->getSRV());// XMFLOAT4(tessellationFactor, height * 100, LODnear, LODfar), scale, XMFLOAT2(xOffset, yOffset), timeOfYear);
 	terrainShader->render(renderer->getDeviceContext(), m_Terrain->getIndexCount());
 
 	/* foliage (geo shader)
@@ -372,15 +383,7 @@ void App1::firstPass()
 	terrainShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(worldMatrix, m_TerrainMatrix), viewMatrix, projectionMatrix, textures, light, camera, &vars, csLand->getSRV());// XMFLOAT4(tessellationFactor, height * 100, LODnear, LODfar), scale, XMFLOAT2(xOffset, yOffset), timeOfYear);
 	terrainShader->render(renderer->getDeviceContext(), m_Terrain->getIndexCount());
 
-	/// foliage (geo shader)
-	if (floraOn) {
-		//renderer->setAlphaBlending(true);
-		f_Terrain->sendData(renderer->getDeviceContext());//worldMatrix//m_TerrainMatrix)
-		treeShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(worldMatrix, XMMatrixMultiply(XMMatrixScaling(5, 1.0, 5), XMMatrixTranslation(int(camera->getPosition().x) - 700.0, 0, int(camera->getPosition().z) - 700.0))), viewMatrix, projectionMatrix, trees, light, camera, &vars, csLand->getSRV());
-		treeShader->render(renderer->getDeviceContext(), f_Terrain->getIndexCount());
-		//renderer->setAlphaBlending(false);
-	}
-
+	
 	/// neighbouring terrains
 	float xMeshOffset;//XMMATRIX xPositionMatrix;
 	float zMeshOffset;//XMMATRIX zPositionMatrix;
@@ -445,15 +448,28 @@ void App1::firstPass()
 	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csLand->getSRV());//XMFLOAT4(tessellationFactor, height * 100, LODnear, LODfar), scale, XMFLOAT2(xOffset, yOffset), timeOfYear);
 	terrainShader->render(renderer->getDeviceContext(), xz_Terrain->getIndexCount());
 
-	/// render water
-	renderer->setAlphaBlending(true);
-	/*D3D11_RASTERIZER_DESC wfdesc;
+	//*			Back Face Culling
+	ID3D11RasterizerState* regularCullMode;
+	renderer->getDeviceContext()->RSGetState(&regularCullMode);
+	D3D11_RASTERIZER_DESC wfdesc;
 	ZeroMemory(&wfdesc, sizeof(D3D11_RASTERIZER_DESC));
 	//wfdesc.FillMode = D3D11_FILL_WIREFRAME;
-	wfdesc.CullMode = D3D11_CULL_FRONT;
+	wfdesc.CullMode = D3D11_CULL_NONE;
 	ID3D11RasterizerState* noCullMode;
 	auto r = renderer->getDevice()->CreateRasterizerState(&wfdesc, &noCullMode);
-	renderer->getDeviceContext()->RSSetState(noCullMode);*/
+	renderer->getDeviceContext()->RSSetState(noCullMode);
+	//*/
+	/// foliage (geo shader)
+	if (floraOn) {
+		//renderer->setAlphaBlending(true);
+		f_Terrain->sendData(renderer->getDeviceContext());//worldMatrix//m_TerrainMatrix)
+		treeShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(worldMatrix, XMMatrixMultiply(XMMatrixScaling(5, 1.0, 5), XMMatrixTranslation(int(camera->getPosition().x) - 700.0, 0, int(camera->getPosition().z) - 700.0))), viewMatrix, projectionMatrix, trees, light, camera, &vars, csLand->getSRV());
+		treeShader->render(renderer->getDeviceContext(), f_Terrain->getIndexCount());
+		//renderer->setAlphaBlending(false);
+	}
+
+	/// render water
+	renderer->setAlphaBlending(true);
 
 	m_Water->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);//								vars.vars.
 	waterShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(worldMatrix, waterMatrix), viewMatrix, projectionMatrix, textures[4], light, camera, XMFLOAT4(tessellationFactor, waterAmplitude, LODnear, LODfar), time);
@@ -472,6 +488,8 @@ void App1::firstPass()
 	//cloudShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(XMMatrixMultiply(worldMatrix, XMMatrixRotationX(0)), XMMatrixMultiply(XMMatrixMultiply(terrainScaleMatrix, XMMatrixScaling(0.32, 1.0, 0.32)), XMMatrixTranslation(-300+ camera->getPosition().x, 300.0, -300.0 + -300+ camera->getPosition().z))), viewMatrix, projectionMatrix, rainTexture, vars.TimeOfYear);
 	//cloudShader->render(renderer->getDeviceContext(), m_clouds->getIndexCount());
 	renderer->setAlphaBlending(false);
+	renderer->getDeviceContext()->RSSetState(regularCullMode);
+
 
 	// Set back buffer as render target and reset view port.
 	renderer->setBackBufferRenderTarget();
@@ -505,7 +523,7 @@ void App1::finalPass()
 
 	renderer->setWireframeMode(false);
 	mapMesh->sendData(renderer->getDeviceContext());// renderr the rendertexture
-	textureShader->setShaderParameters(renderer->getDeviceContext(), worldMatrix, baseViewMatrix, orthoMatrix, (DepthOfField)? verBlur->getSRV() : preDOFRT->getShaderResourceView());//csLand->getSRV());//
+	textureShader->setShaderParameters(renderer->getDeviceContext(), worldMatrix, baseViewMatrix, orthoMatrix, (DepthOfField) ? cameraDepth->getDepthMapSRV() : preDOFRT->getShaderResourceView()); //verBlur->getSRV());//csLand->getSRV());//
 	textureShader->render(renderer->getDeviceContext(), mapMesh->getIndexCount());
 	//renderer->setZBuffer(true);
 
@@ -645,7 +663,7 @@ void App1::gui()
 		if (ImGui::ArrowButton("zoom-", ImGuiDir_Down) && mapZoom > 1) {
 			mapZoom--;
 		}
-		ImGui::Image(csLand->getSRV(), ImVec2(200, 200));///
+		ImGui::Image(/*csLand->getSRV()*/verBlur->getSRV(), ImVec2(200, 200));///
 		//ImGui::Image(my_tex_id, ImVec2(my_tex_w, my_tex_h), ImVec2(0, 0), ImVec2(1, 1), ImColor(255, 255, 255, 255), ImColor(255, 255, 255, 128));
 		//ImGui::ShowDemoWindow();
 		//if (ImGui::IsItemHovered())
@@ -688,19 +706,20 @@ void App1::gui()
 
 	ImGui::End();
 
-	/*ImGui::Begin("Test  options");
+	//*
+	ImGui::Begin("Test  options");
 		auto v = camera->getViewMatrix();
-		v = XMMatrixInverse(&XMMatrixDeterminant(v), v);
 		float pos[4] = { v.r[0].m128_f32[0],v.r[0].m128_f32[1],v.r[0].m128_f32[2],v.r[0].m128_f32[3] };
 		float pas[4] = { v.r[1].m128_f32[0],v.r[1].m128_f32[1],v.r[1].m128_f32[2],v.r[1].m128_f32[3] };
 		float pus[4] = { v.r[2].m128_f32[0],v.r[2].m128_f32[1],v.r[2].m128_f32[2],v.r[2].m128_f32[3] };
+		v = XMMatrixInverse(&XMMatrixDeterminant(v), v);
 		float pes[4] = { v.r[3].m128_f32[0],v.r[3].m128_f32[1],v.r[3].m128_f32[2],v.r[3].m128_f32[3] };
 		ImGui::SliderFloat4("a", pos, 0, 1);
 		ImGui::SliderFloat4("b", pas, 0, 1);
 		ImGui::SliderFloat4("c", pus, 0, 1);
 		ImGui::SliderFloat4("d", pes, 0, 1);
 		//testPosition = { pos[0], pos[1], pos[2] };
-	ImGui::End();*/
+	ImGui::End();//*/
 
 	// Render UI
 	ImGui::Render();

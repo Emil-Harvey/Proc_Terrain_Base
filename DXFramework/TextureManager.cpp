@@ -20,16 +20,18 @@ void TextureManager::loadTexture(const wchar_t* uid, const wchar_t* filename)
 	// check if file exists
 	if (!filename)
 	{
+		std::wstring message = L"Texture filename does not exist " + std::wstring(filename);
 		//filename = L"../res/DefaultDiffuse.png";
-		MessageBox(NULL, L"Texture filename does not exist", L"ERROR", MB_OK);
+		MessageBox(NULL, message.c_str(), L"ERROR", MB_OK);
 		return;
 	}
 	// if not set default texture
 	if (!does_file_exist(filename))
 	{
 		// change default texture
+		std::wstring message = L"Texture file does not exist " + std::wstring(filename);
 		//filename = L"../res/DefaultDiffuse.png";
-		MessageBox(NULL, L"Texture filename does not exist", L"ERROR", MB_OK);
+		MessageBox(NULL, message.c_str(), L"ERROR", MB_OK);
 		return;
 	}
 

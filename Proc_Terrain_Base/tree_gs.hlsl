@@ -238,9 +238,14 @@ void main(point InputType input[1], inout TriangleStream<OutputType> triStream)
         }//*/
  
 
-        output.treeType = 7;//int(2+ 2*sin(latitude)); 
+        output.treeType = 3;//int(2+ 2*sin(latitude)); 
 
-        if (length(input[0].world_position.xz - camera_pos.xy) < 700)
+        float3 crosp = cross(normalize(float3(viewMatrix[0][2],
+            viewMatrix[1][2],
+            viewMatrix[2][2])), normalize(input[0].world_position.xyz - camera_pos.xyz));
+        bool pos_infront_of_camera = length(crosp) < 0.850; /// abs(a+b) < abs(a) then b goes 'backwards' from a
+
+        if (pos_infront_of_camera && length(input[0].world_position.xz - camera_pos.xz) < 700)
             quadSize = 5 + 1.5 * perlin(input[0].world_position + 0.4115); //+ (6 * input[0].snowness);
 
 

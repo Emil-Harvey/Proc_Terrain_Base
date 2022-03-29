@@ -133,9 +133,9 @@ void main(int3 groupThreadID : SV_GroupThreadID,
 	[unroll]    /// what does this do
 
     output.a = height;
-    output.r = sqrt(humidity/1.0); /// macro_height;//
+    output.r = sqrt(humidity/1.0) + min(macro_height,1)/1.60;//
 
-    ///output.g = 0.3 * height / manipulationDetails.z;
+    output.g = 0.003 * height; // / manipulationDetails.z;
     output.b = 0.09 * height / (1+pow(manipulationDetails.z,3));
     //if (height < 0) { output.b = 1+height; }
     //output.rgb = normal;//?
