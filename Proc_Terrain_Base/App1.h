@@ -81,6 +81,7 @@ private:
 	ID3D11ShaderResourceView* trees[4];
 	ID3D11ShaderResourceView* cloudTexture;
 	ID3D11ShaderResourceView* rainTexture;
+	ID3D11ShaderResourceView* macroTexture;
 
 	// terrain gen 
 	int terrainResolution = 16;

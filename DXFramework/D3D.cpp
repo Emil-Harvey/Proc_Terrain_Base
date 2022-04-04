@@ -219,6 +219,11 @@ void D3D::createDefaultRasterState()
 	rasterDesc.FillMode = D3D11_FILL_WIREFRAME;
 	device->CreateRasterizerState(&rasterDesc, &rasterStateWF);
 
+	///create raster state with two-sided enabled
+	rasterDesc.FillMode = D3D11_FILL_SOLID;
+	rasterDesc.CullMode = D3D11_CULL_NONE;
+	device->CreateRasterizerState(&rasterDesc, &rasterState2S);
+
 	// Setup the viewport for rendering.
 	viewport.Width = (float)screenwidth;
 	viewport.Height = (float)screenheight;
@@ -509,4 +514,20 @@ void D3D::setWireframeMode(bool b)
 bool D3D::getWireframeState() 
 {
 	return wireframeState;
+}
+
+void D3D::set2SidedMode(bool b)
+{
+	if (b)
+	{
+		deviceContext->RSSetState(rasterState2S);
+	}
+	else if(wireframeState)
+	{
+		deviceContext->RSSetState(rasterStateWF);
+	}
+	else
+	{
+		deviceContext->RSSetState(rasterState);
+	}
 }

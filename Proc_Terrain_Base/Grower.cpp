@@ -14,7 +14,7 @@ void Grower::initShader(const wchar_t* vsFilename, const wchar_t* gsFilename, co
 }
 
 
-void Grower::setShaderParameters(ID3D11DeviceContext* deviceContext, const XMMATRIX& world, const XMMATRIX& view, const XMMATRIX& projection, ID3D11ShaderResourceView* tex[], Light* light, FPCamera* camera, ShaderVariables* SVars, ID3D11ShaderResourceView* heightmap)
+void Grower::setShaderParameters(ID3D11DeviceContext* deviceContext, const XMMATRIX& world, const XMMATRIX& view, const XMMATRIX& projection, ID3D11ShaderResourceView* extra_tex, ID3D11ShaderResourceView* tex[], Light* light, FPCamera* camera, ShaderVariables* SVars, ID3D11ShaderResourceView* heightmap, bool trees)
 {
 	HRESULT result;
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
@@ -36,14 +36,22 @@ void Grower::setShaderParameters(ID3D11DeviceContext* deviceContext, const XMMAT
 	deviceContext->VSSetConstantBuffers(0, 1, &matrixBuffer);
 	deviceContext->GSSetConstantBuffers(0, 1, &matrixBuffer);
 
+	
+
 	// Send pos data to geo shader
 	CameraBufferType* posPtr;
 	deviceContext->Map(cameraBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 	posPtr = (CameraBufferType*)mappedResource.pData;
 	auto inverse = XMMatrixInverse(&XMMatrixDeterminant(view), view);
 	XMStoreFloat3(&posPtr->position, inverse.r[3]);
+	// Tell Vert shader whether rendering grass (dense) or trees
+	if (trees)
+		posPtr->padding = 15;
+	else// grass
+		posPtr->padding = 5;
 
 	deviceContext->Unmap(cameraBuffer, 0);
+	deviceContext->VSSetConstantBuffers(1, 1, &cameraBuffer);
 	deviceContext->GSSetConstantBuffers(2, 1, &cameraBuffer);
 
 	// Send scale data to geo shader
@@ -60,7 +68,7 @@ void Grower::setShaderParameters(ID3D11DeviceContext* deviceContext, const XMMAT
 	
 	deviceContext->Unmap(chunkBuffer, 0);
 	deviceContext->GSSetConstantBuffers(1, 1, &chunkBuffer);
-	deviceContext->VSSetConstantBuffers(1, 1, &chunkBuffer);
+	//deviceContext->VSSetConstantBuffers(1, 1, &chunkBuffer);
 	deviceContext->PSSetConstantBuffers(1, 1, &chunkBuffer);
 
 	//Additional
@@ -79,7 +87,8 @@ void Grower::setShaderParameters(ID3D11DeviceContext* deviceContext, const XMMAT
 	deviceContext->VSSetSamplers(0, 1, &sampleState);
 
 	// Set shader texture resource in the pixel shader.
-	deviceContext->PSSetShaderResources(0, 4, tex);
+	deviceContext->PSSetShaderResources(0, 1, &extra_tex);
+	deviceContext->PSSetShaderResources(1, 4, tex);
 	deviceContext->PSSetSamplers(0, 1, &sampleState);
 }
 

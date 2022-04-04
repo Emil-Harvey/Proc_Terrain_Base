@@ -74,7 +74,7 @@ float invsmoothstep(float y)
     t -= (t * (4.0 * t * t - 3.0) + yn) / (12.0 * t * t - 3.0);
     return t + 0.5;
 }
-float get_terrain_height(float2 input, float octaves) {
+float get_terrain_height(float2 input, float octaves) { // old noise height function
     float ret;
     float continental_noise = 1 * ( bfm((input + 800) / (4900.7 * scale), 4)+(0.2*perlin(input/(500 * scale))) );
     if (continental_noise > -0.25) {// save effort on ocean  ... maybe just make 'octaves' lower?
@@ -204,7 +204,7 @@ OutputType main(ConstantOutputType input, float2 uvwCoord : SV_DomainLocation, c
         // flat to cliff attenuation
     output.steepness = saturate(pow(saturate(slope) + 0.18 + (0.12 * bfm(scale * seedc.xz / (scale * 12), 4)), 10));
 
-    if (output.steepness < 0.016 && octaves > 6){
+    if (output.steepness < 0.016 && octaves > 6){// add real roughness to steep slopes
         output.world_position.xyz += (1- output.steepness) * 4.8 * scale * output.normal * perlin(seedc.xz / (scale * 800.1171));
         if (octaves > 9) {
             output.world_position.xyz += 0.592 * scale * output.normal * perlin(seedc.xz / (scale * 1.1171));
@@ -212,7 +212,7 @@ OutputType main(ConstantOutputType input, float2 uvwCoord : SV_DomainLocation, c
     }
 
     // beachline
-    const half beachline = 0.2; //altitude at which beaches meet soil
+    const half beachline = 0.3; //altitude at which beaches meet soil
     output.beachness = saturate(slope) * saturate(2 * altitude - (2*bfm(seedc.xz / (scale * 12), 4)) - beachline);
 
     if (output.world_position.y > -5) {
@@ -222,10 +222,8 @@ OutputType main(ConstantOutputType input, float2 uvwCoord : SV_DomainLocation, c
     const half prevailingWindX = -tan(abs(1 * latitude) + (3.14159 * 0.5)) / 5.0; //
     ///*const float2 prevailingWind///
     output.wind = normalize(float2(prevailingWindX, prevailingWindY)); //
-    //output.world_position.y = prevailingWindX * 30;
-    //float3 rightVector = float3(viewMatrix[0][0],
-    //                            viewMatrix[1][0],
-    //                            viewMatrix[2][0]);        <- was for rain & snow
+    //output.world_position.y = prevailingWindX * 30; debug
+    
 
     const half minGlobalTemp = -37.0;//`C
     const half maxGlobalTemp = 36.6;//`C
@@ -254,12 +252,17 @@ output.humidity = pow((output.humidity - 0.5) * 1.75, 5) + 0.5;// shift most val
 
 output.humidity = heightmapSampled.r;
     }
-// noise to determine between plains and woodland, slightly higher chance of the former
+    else {
+        output.snowness = 0.0; // avoid snow underwater lol
+    }
+//      noise to determine between plains and woodland, slightly higher chance of the former
     output.noise2 =  saturate(output.humidity * pow(1 - bfm(seedc.xz / (scale * 29), 4), 3));
 
     // similar noise for beach pebbles, but offset by 99 so the noise does not line up
     output.noise = saturate(pow(1 - bfm(seedc.xz / (scale * 10), 3), 3)+perlin(seedc.xz / (scale * 111.1171)));//pow(saturate(1 - bfm(99 + coords / (scale * 12), 4)), 3);
     //output.var = cos(output.world_position.x);
+
+
 
     ///
     /*- triplanar mapping -*/

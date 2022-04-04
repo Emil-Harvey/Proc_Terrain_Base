@@ -8,7 +8,7 @@
 * Provided functions for controlling begin/end frame rendering, wireframe rendering, orthographic and alpha blended rendering.
 * Member variables for projection, ortho and identity world matrices.
 *
-* \author Paul Robertson
+* \author Paul Robertson (edits by Emil Harvey)
 */
 
 
@@ -72,6 +72,7 @@ public:
 	
 	void setWireframeMode(bool b);	///< Set wireframe render mode on/off
 	bool getWireframeState();		///< Returns currect wireframe state on/off
+	void set2SidedMode(bool b);		// < set Two-sided redering mode on/off
 
 	void setBackBufferRenderTarget();	///< Sets the back buffer as the render target
 	void resetViewport();				///< Restores viewport if dimensions of render target were different
@@ -114,6 +115,7 @@ protected:
 	ID3D11DepthStencilView* depthStencilView;
 	ID3D11RasterizerState* rasterState;			///< Default FILL raster state
 	ID3D11RasterizerState* rasterStateWF;		///< Wireframe raster state
+	ID3D11RasterizerState* rasterState2S;		//< Two-sided raster state ~
 	XMMATRIX projectionMatrix;					///< Identity projection matrix
 	XMMATRIX worldMatrix;						///< Identity world matrix
 	XMMATRIX orthoMatrix;						///< Identity orthographic matrix

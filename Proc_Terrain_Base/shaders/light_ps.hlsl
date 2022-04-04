@@ -222,7 +222,8 @@ float4 Tex(Texture2D t, triplanarUVs uv)//
                      col2 * uv.blendWeights.y +
                      col3 * uv.blendWeights.z;
 
-
+  float coefficient = (hSavan.Sample(s0, uv.texY * 0.002).x + 0.5) * (hSavan.Sample(s0, uv.texY * 0.05).x + 0.5) * (hSavan.Sample(s0, uv.texY * 0.2).x + 0.5);
+  texColour.xyz *= lerp(float3(0.52, 0.51, 0.50), float3(1, 1, 1), coefficient); //       MACRO TEXTURE VARIATION - inspired by unreal engine 4
   return texColour;//(t.Sample(s0, uv)); //+t.Sample(s0, i.tex * 0.1)) / 3;
     
 }
@@ -350,7 +351,7 @@ float4 main(InputType input) : SV_TARGET
 
     }
     else// not water
-    {
+    {// try simplifying biome texturing by ruling out pure biome areas from mixing textures
         float aridness = ((input.temperature + 17.0) / 45.0) * input.humidity;
         // blend the textures based on biome parameters, and using the heightmap of each texture (height blend) for more realistic texturing
         if (input.steepness <= 0.1) {
@@ -398,11 +399,11 @@ float4 main(InputType input) : SV_TARGET
     if (altitude <= 0.2)
     {
         float depth = abs(altitude - 0.2);
-            textureColour.rgb = pow(textureColour.rgb, min(1 + depth * 2.0, 3.0));      
-        textureColour.rgb /= min(1 + depth, 3.0); // at altitudes > beachline we / by 1 [no change]
+            textureColour.rgb = pow(textureColour.rgb, min(1 + depth * 2.0, 3.0));//  wetness    
+        textureColour.rgb /= min(1 + depth, 3.0); //darkness. at altitudes > beachline we / by 1 [no change]
         //textureShine.r *= min(1 + depth, 2.3);
         
-        depth = pow(min(altitude, 0),3.0);
+        depth = pow(min(altitude, 0),3.0);// seawater colouration
         lightColour.r /= 1 - depth * 0.05;//, 4.0;//min();
         lightColour.g /= 1 - depth * 0.025;//, 2.35;//min();
         lightColour.b /= 1 - depth * 0.02;//, 1.2;//min();

@@ -19,7 +19,7 @@ public:
 
 	
 	//override to take 1 texture
-	void setShaderParameters(ID3D11DeviceContext* deviceContext, const XMMATRIX& world, const XMMATRIX& view, const XMMATRIX& projection, ID3D11ShaderResourceView* tex[], Light* light, FPCamera* camera, ShaderVariables* SVars, ID3D11ShaderResourceView* heightmap);
+	void setShaderParameters(ID3D11DeviceContext* deviceContext, const XMMATRIX& world, const XMMATRIX& view, const XMMATRIX& projection, ID3D11ShaderResourceView* extra_tex, ID3D11ShaderResourceView* tex[], Light* light, FPCamera* camera, ShaderVariables* SVars, ID3D11ShaderResourceView* heightmap, bool trees = false);
 
 	//QuadMesh TreeHere(ID3D11Device* device, ID3D11DeviceContext* deviceContext, XMFLOAT3 position);
 private:

@@ -16,6 +16,10 @@ FOLIAGE
 keep scale static, only resolution matters
  - render trees farther than grass; separate meshes, maybe separate shaders for each
 
+'PBR billboards':
+- https://sickheadgames.artstation.com/projects/xe24r
+- http://silvadorblog.blogspot.com/2017/09/improving-normal-map-on-billboards.html
+
 -    ( move sunlight calculation to 'per-vertex'? )
 - tada!
 - regenerate terrain and recenter camera when camera position > 2/3 or 3/4 of the whole plane <- kinda done this. 
@@ -24,7 +28,15 @@ keep scale static, only resolution matters
 
 - what kind of lod scale? - log10 would be nice? done!
 
-why is lofi scree texture dark? (prob bc of bit depth or something)
+why is lofi scree texture dark? (prob bc of bit depth or something) *fixed?
+
+Biome Texturing:
+ -  Macro texture variation -- implemented but could be improved. i.e. albedo only (make albedo Tex()...)
+ -  Grass chlorophyll count; green - straw colour
+ -  Stone/soil geology - iron content (rustiness); soil nutrients/wetness (darker); sandiness (beige - lack of soil)
+ -  water - green algae/chlorophyll concentration
+ --	-	cyan colour shader underwater? (nae red)
+
 
 - move exponential height to the generation function  <- done!
 - Quad trees are hard -_-

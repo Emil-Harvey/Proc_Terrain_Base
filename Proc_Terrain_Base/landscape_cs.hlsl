@@ -65,7 +65,7 @@ float get_terrain_height(float2 input, float octaves) {
     return ret;
 }
 
-float3 calculateNormal(float2 pos, int octaves, float h = 1.0 / 50.0f)
+float3 calculateNormal(float2 pos, int octaves, float h = 1.0 / 50.0f) // inefficient
 {
 
     ///   int octaves = int(lerp(10, 2, saturate(length(viewpos.xz - pos) / 595.0)));
@@ -92,20 +92,23 @@ float3 calculateNormal(float2 pos, int octaves, float h = 1.0 / 50.0f)
 void main(int3 groupThreadID : SV_GroupThreadID,
 	int3 dispatchThreadID : SV_DispatchThreadID)
 {
-    const double c = 7.680;// scale factor -: 1500 * 7.68 = 11520 { the world_position/size of the 3x3 terrain meshes }
-    float2 coords = { (dispatchThreadID.x * c) + seed.x + globalPosition.x , (dispatchThreadID.y * c) + seed.y + globalPosition.y };
-    float height = get_terrain_height(coords, 20.0);
+    const double c = 7.680;// scale factor ->: 1500 * 7.68 = 11520 { the world_position/size of the 3x3 terrain meshes }
+    const float2 coords = { (dispatchThreadID.x * c) + seed.x + globalPosition.x , (dispatchThreadID.y * c) + seed.y + globalPosition.y };
+    const float height = get_terrain_height(coords, 20.0);
 
-    float macroScale = 3.0;
-    float2 macroCoords = { (((dispatchThreadID.x * c) - 5760) * macroScale) + 5760 + seed.x + globalPosition.x , (((dispatchThreadID.y * c) - 5760) * macroScale) + 5760 + seed.y + globalPosition.y };
-    float macro_height = get_terrain_height(macroCoords, 8.0);
+    const float macroScale = 3.0;
+    const float2 macroCoords = { (((dispatchThreadID.x * c) - 5760) * macroScale) + 5760 + seed.x + globalPosition.x , (((dispatchThreadID.y * c) - 5760) * macroScale) + 5760 + seed.y + globalPosition.y };
+    const float macro_height = get_terrain_height(macroCoords, 8.0);
+
+    // CALCULATE NORMAL
+    const float3 normal = calculateNormal(coords, 5.0); const float slope = normal.y; const float2 aspect = normal.xz;
     
     // PREVAILING WINDS VECTOR
     float latitude = coords.y - seed.y; 
     latitude = 2 * (latitude / (planetDiameter * 3.14159)); // add 'sphericality'
     const half prevailingWindY = tan(2 * latitude) / (1.74 / abs(latitude * 0.3183)); // or something
     const half prevailingWindX = -tan(abs(1 * latitude) + (3.14159 * 0.5)) / 5.0; //
-    float2 offset = gradient(coords.x, coords.y);
+    float2 offset = gradient(coords.x, coords.y); // sampling jitter
     float2 wind = normalize(float2(prevailingWindX + offset.x, prevailingWindY + offset.y));//
     
     float humidity = 0;// calculate humidity 
@@ -124,6 +127,25 @@ void main(int3 groupThreadID : SV_GroupThreadID,
             positionOffset = 1.05 * positionOffset + 350;
         }
         humidity = max(min(humidity, 4.0),0.0);
+
+        //          from terrain-ds:
+        const half minGlobalTemp = -37.0;//`C
+        const half maxGlobalTemp = 36.6;//`C
+        //  climactic/static annual average temperature. seasonal and daily weather will alter this
+        float temperature = lerp(minGlobalTemp, maxGlobalTemp,
+                                    (0.5 + 0.5 * cos(latitude)) // cold @ poles hot @ equator
+                                    - (height / (300 * scale))//   cold @ high altitude
+                                    + dot(aspect.y, sin(latitude * 0.5)) * 0.8);// cold on polar aspect slopes // 
+        // absolute humidity - relative humidity is less meaningful///          <-- fix this algorithm?
+        //*
+        humidity +=
+            ((temperature - minGlobalTemp) * 0.02 // ~
+            + (dot(wind, -aspect) *0.0)  ); // rainshadow effect - it is more humid on slopes that face the wind
+        //+ perlin(seedc.xz / (scale * 99)) +1
+        //)/ altitude ; //
+        humidity = pow((humidity - 0.5) * 1.75, 5) + 0.0;// shift most values closer to 0.5 */
+
+
     }
     //*/
     //float3 normal = calculateNormal(coords.xz, 10.0); unnecessary(?) just sample heightmap per vertex instead
@@ -133,10 +155,10 @@ void main(int3 groupThreadID : SV_GroupThreadID,
 	[unroll]    /// what does this do
 
     output.a = height;
-    output.r = sqrt(humidity/1.0) + min(macro_height,1)/1.60;//
+    output.r = sqrt(humidity / 1.0)-1;// +min(macro_height, 0) / 1.60;//
 
-    output.g = 0.003 * height; // / manipulationDetails.z;
-    output.b = 0.09 * height / (1+pow(manipulationDetails.z,3));
+    output.g = slope; // / manipulationDetails.z;
+    output.b = 0.01 * height / (1+pow(manipulationDetails.z,3));
     //if (height < 0) { output.b = 1+height; }
     //output.rgb = normal;//?
     /// output.rgb -> humidity & wind?

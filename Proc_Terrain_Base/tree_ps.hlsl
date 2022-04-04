@@ -1,6 +1,7 @@
 // Calculate diffuse lighting for a single directional light (also texturing)
 
-Texture2D trees[4] : register(t0);
+Texture2D macro : register(t0); // macro texture variation
+Texture2D trees[4] : register(t1);
 
 
 SamplerState s0 : register(s0);
@@ -73,6 +74,13 @@ LightInfo calculateSunlightInfo(float4 coords) {
     //li.colour = 0;
     return li;
 }
+float noise(float2 xy) {
+    // makes the random gradients for the given grid coordinate
+    float seed = 74981.87126386f;//21732.37f;
+    float random = seed * 9.01230387 + sin(xy.x + xy.y * seed) * cos(xy.x * xy.y + seed) * seed + xy.x + xy.x / xy.y + seed * xy.y - sin(seed - xy.y);
+    //return fmod(random, 1);
+    return 0.5 * sin(random) + 0.5;
+}
 
 float4 main(InputType input) : SV_TARGET
 {
@@ -82,7 +90,7 @@ float4 main(InputType input) : SV_TARGET
     const float latitude = input.world_position.z;
     
    // const float temperature = 1 -((2 + 2.4 * cos(latitude * 0.0035) + (cos(160.0 / PI180) * -sin(latitude * 0.00175))));
-    
+    float3 normal = input.normal;
 	// Sample the texture. Calculate light intensity and colour, return light*texture for final pixel colour.
    // decide which tree is here
     if (input.treeType == 0)
@@ -96,25 +104,34 @@ float4 main(InputType input) : SV_TARGET
         textureColour = trees[1].Sample(s0, input.tex);
     else if (input.treeType < 2.9)
         textureColour = trees[2].Sample(s0, input.tex);
-    else
+    else {
         textureColour = trees[3].Sample(s0, input.tex);
-    
-    // handle transparent pixels (from https://docs.microsoft.com/en-us/windows/win32/direct3dhlsl/dx-graphics-hlsl-clip )
-    clip(textureColour.a < 0.623 ? -1 : 1);
+        normal += 1-trees[2].Sample(s0, input.tex);// + billboard normal
+    }
 
-    if (true && textureColour.g > (textureColour.r + textureColour.b) / 1.35) // if pixel is green
-    {// grass dryness
+    // handle transparent pixels (from https://docs.microsoft.com/en-us/windows/win32/direct3dhlsl/dx-graphics-hlsl-clip )
+    // use noise dithering
+    half thres = 0.623 + 0.15 * noise(float2(input.tex.x * 14, input.tex.y));
+    clip(textureColour.a < thres ? -1 : 1);
+
+
+    if (input.treeType == 0 && textureColour.g > (textureColour.r + textureColour.b) / 1.35) // if pixel is green grass
+    {
+        float coefficient = (macro.Sample(s0, input.tex * 0.08).x + 0.5) *(macro.Sample(s0, input.colourMultiplier.zw * 0.002).x + 0.5) * (macro.Sample(s0, input.colourMultiplier.zw * 0.05).x + 0.5) * (macro.Sample(s0, input.colourMultiplier.zw * 0.2).x + 0.5);
+        textureColour.xyz *= lerp(float3(0.52, 0.51, 0.50), float3(1, 1, 1), coefficient); //       MACRO TEXTURE VARIATION ~
+    
+     // grass dryness
         textureColour.g *= input.colourMultiplier.g;
 
     }
-    textureColour.rgb *= textureColour.a;// avoid whitened edges
+    //textureColour.rgb *= textureColour.a;// avoid whitened edges <-- fix the textures!
 
 
-   
+   //  Lighting
     LightInfo sunlight = calculateSunlightInfo(input.world_position);
-    lightColour = calculateLighting(-sunlight.direction, input.normal, sunlight.colour);//calculateLighting(-lightDirection, input.normal + textureNormal, diffuseColour); 
+    lightColour = calculateLighting(-sunlight.direction, normal, sunlight.colour);//calculateLighting(-lightDirection, input.normal + textureNormal, diffuseColour); 
 
-
+    
     lightColour = (sunlight.ambient + lightColour);//calculateLighting(-lightDirection, input.normal, diffuseColour));
 	
     return textureColour * lightColour;//* 2 * //

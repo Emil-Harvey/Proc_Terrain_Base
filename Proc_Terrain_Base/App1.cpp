@@ -332,8 +332,8 @@ void App1::firstPass()
 	XMMATRIX worldMatrix, viewMatrix, projectionMatrix;
 	const XMMATRIX positionMatrix = XMMatrixTranslation(xz_TerrainMeshOffset, 0.0, xz_TerrainMeshOffset);
 	//water
-	static const XMMATRIX waterScaleMatrix = XMMatrixScaling(4096.0 / Water_Mesh_Res, 1.0, 4096.0 / Water_Mesh_Res);
-	const XMMATRIX waterMatrix = XMMatrixMultiply(waterScaleMatrix, positionMatrix);
+	static const XMMATRIX waterScaleMatrix = XMMatrixScaling(3 * 4096 / Water_Mesh_Res, 1.0, 3 * 4096 / Water_Mesh_Res);
+	const XMMATRIX waterMatrix = XMMatrixMultiply(waterScaleMatrix, XMMatrixTranslation(xz_TerrainMeshOffset*3, 0.0, xz_TerrainMeshOffset*3));
 	//terrain
 	static const XMMATRIX terrainScaleMatrix = XMMatrixScaling(256, 1.0, 256);// 4096 may be incorrect, it may also be x^2 or something4096.0 / terrainResolution
 	const XMMATRIX m_TerrainMatrix = XMMatrixMultiply(terrainScaleMatrix, positionMatrix);
@@ -448,22 +448,29 @@ void App1::firstPass()
 	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csLand->getSRV());//XMFLOAT4(tessellationFactor, height * 100, LODnear, LODfar), scale, XMFLOAT2(xOffset, yOffset), timeOfYear);
 	terrainShader->render(renderer->getDeviceContext(), xz_Terrain->getIndexCount());
 
-	//*			Back Face Culling
-	ID3D11RasterizerState* regularCullMode;
-	renderer->getDeviceContext()->RSGetState(&regularCullMode);
+	/*			Back Face Culling
+	
 	D3D11_RASTERIZER_DESC wfdesc;
-	ZeroMemory(&wfdesc, sizeof(D3D11_RASTERIZER_DESC));
+	//ZeroMemory(&wfdesc, sizeof(D3D11_RASTERIZER_DESC));
 	//wfdesc.FillMode = D3D11_FILL_WIREFRAME;
 	wfdesc.CullMode = D3D11_CULL_NONE;
 	ID3D11RasterizerState* noCullMode;
 	auto r = renderer->getDevice()->CreateRasterizerState(&wfdesc, &noCullMode);
 	renderer->getDeviceContext()->RSSetState(noCullMode);
 	//*/
+	renderer->set2SidedMode(true);
 	/// foliage (geo shader)
 	if (floraOn) {
 		//renderer->setAlphaBlending(true);
+
+		/// grass
 		f_Terrain->sendData(renderer->getDeviceContext());//worldMatrix//m_TerrainMatrix)
-		treeShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(worldMatrix, XMMatrixMultiply(XMMatrixScaling(5, 1.0, 5), XMMatrixTranslation(int(camera->getPosition().x) - 700.0, 0, int(camera->getPosition().z) - 700.0))), viewMatrix, projectionMatrix, trees, light, camera, &vars, csLand->getSRV());
+		treeShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(worldMatrix, XMMatrixMultiply(XMMatrixScaling(5, 1.0, 5), XMMatrixTranslation(int(camera->getPosition().x) - 700.0, 0, int(camera->getPosition().z) - 700.0))), viewMatrix, projectionMatrix, macroTexture, trees, light, camera, &vars, csLand->getSRV());
+		treeShader->render(renderer->getDeviceContext(), f_Terrain->getIndexCount());
+
+		/// trees
+		f_Terrain->sendData(renderer->getDeviceContext());//worldMatrix//m_TerrainMatrix)
+		treeShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(worldMatrix, XMMatrixMultiply(XMMatrixScaling(15, 1.0, 15), XMMatrixTranslation(int(camera->getPosition().x) - 2100.0, 0, int(camera->getPosition().z) - 2100.0))), viewMatrix, projectionMatrix, macroTexture, trees, light, camera, &vars, csLand->getSRV(), true);
 		treeShader->render(renderer->getDeviceContext(), f_Terrain->getIndexCount());
 		//renderer->setAlphaBlending(false);
 	}
@@ -476,19 +483,21 @@ void App1::firstPass()
 	waterShader->render(renderer->getDeviceContext(), m_Water->getIndexCount());
 	//renderer->setAlphaBlending(false);
 
-	///	clouds		 - cant get em to look right ... switch to back-face? scale -1?
+	///	clouds		 - cant get em to look right ... (switch to back-face? - fixed) fix matrix/shader pipeline
 	//
 	//renderer->setAlphaBlending(true);
 	///renderer->getDeviceContext()->RSSetState(renderer->getDeviceContext()->RSGetState())
 	m_clouds->sendData(renderer->getDeviceContext());
 	//
 	textureShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(XMMatrixMultiply(worldMatrix, XMMatrixRotationX(0)), XMMatrixMultiply(XMMatrixMultiply(terrainScaleMatrix, XMMatrixScaling(2.0, 1.0, 02.0)), XMMatrixTranslation(-6400, 300.0, -6400.0))), viewMatrix, projectionMatrix, cloudTexture, vars.TimeOfYear);
-	textureShader->render(renderer->getDeviceContext(), m_clouds->getIndexCount());
-	//																																																																								cloudTexture
+	//textureShader->render(renderer->getDeviceContext(), m_clouds->getIndexCount());
+	renderer->set2SidedMode(false);// return to regular fill rasterState
+	//																																																																							cloudTexture
 	//cloudShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(XMMatrixMultiply(worldMatrix, XMMatrixRotationX(0)), XMMatrixMultiply(XMMatrixMultiply(terrainScaleMatrix, XMMatrixScaling(0.32, 1.0, 0.32)), XMMatrixTranslation(-300+ camera->getPosition().x, 300.0, -300.0 + -300+ camera->getPosition().z))), viewMatrix, projectionMatrix, rainTexture, vars.TimeOfYear);
 	//cloudShader->render(renderer->getDeviceContext(), m_clouds->getIndexCount());
+
 	renderer->setAlphaBlending(false);
-	renderer->getDeviceContext()->RSSetState(regularCullMode);
+	
 
 
 	// Set back buffer as render target and reset view port.
@@ -663,7 +672,7 @@ void App1::gui()
 		if (ImGui::ArrowButton("zoom-", ImGuiDir_Down) && mapZoom > 1) {
 			mapZoom--;
 		}
-		ImGui::Image(/*csLand->getSRV()*/verBlur->getSRV(), ImVec2(200, 200));///
+		ImGui::Image(csLand->getSRV()/*verBlur->getSRV()*/, ImVec2(200, 200));///
 		//ImGui::Image(my_tex_id, ImVec2(my_tex_w, my_tex_h), ImVec2(0, 0), ImVec2(1, 1), ImColor(255, 255, 255, 255), ImColor(255, 255, 255, 128));
 		//ImGui::ShowDemoWindow();
 		//if (ImGui::IsItemHovered())
@@ -751,7 +760,7 @@ void App1::initTextures() {
 	
 	//auto xzzj = textures;
 //*
-	textureMgr->loadTexture(L"rock_c", L"res/nice textures/rock_/rock_c.png");
+	textureMgr->loadTexture(L"rock_c", L"res/lofi textures/rock_/rock_c.png");
 	textureMgr->loadTexture(L"rock_h", L"res/nice textures/rock_/rock_h.png");
 	textureMgr->loadTexture(L"rock_n", L"res/nice textures/rock_/rock_n.png");
 	textureMgr->loadTexture(L"rock_s", L"res/nice textures/rock_/rock_s.png");
@@ -854,20 +863,22 @@ void App1::initTextures() {
 	textures[35] = textureMgr->getTexture(L"savan_s");
 
 	// flora	(use "oak2.png" etc for low res textures)								
-	textureMgr->loadTexture(L"oak",			  L"res/flora/oak.png");
+	textureMgr->loadTexture(L"grass",			  L"res/flora/grass.png");
 	textureMgr->loadTexture(L"pine",	     L"res/flora/pine.png");
-	textureMgr->loadTexture(L"snowpine", L"res/flora/snowpine.png");
-	textureMgr->loadTexture(L"bush",         L"res/flora/grass.png");
+	textureMgr->loadTexture(L"beech_n", L"res/flora/pbr/beech_n.png");
+	textureMgr->loadTexture(L"beech_c",         L"res/flora/pbr/beech_c.png");
 
-	trees[0] = textureMgr->getTexture(L"oak");
+	trees[0] = textureMgr->getTexture(L"grass");
 	trees[1] = textureMgr->getTexture(L"pine");
-	trees[2] = textureMgr->getTexture(L"snowpine");
-	trees[3] = textureMgr->getTexture(L"bush");
+	trees[2] = textureMgr->getTexture(L"beech_n");
+	trees[3] = textureMgr->getTexture(L"beech_c");
 
 	textureMgr->loadTexture(L"cloud", L"res/nice textures/cloud.png");
 	cloudTexture = textureMgr->getTexture(L"cloud");
 	textureMgr->loadTexture(L"rain", L"res/nice textures/rain.png");
 	rainTexture = textureMgr->getTexture(L"rain");
+	textureMgr->loadTexture(L"macro", L"res/macro_variation.png");
+	macroTexture = textureMgr->getTexture(L"macro");
 	//textureMgr->loadTexture(L"foo", L"res/test.png");
 	//cloudTexture = textureMgr->getTexture(L"foo");
 }
