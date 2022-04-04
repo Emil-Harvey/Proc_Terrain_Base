@@ -126,7 +126,7 @@ void main(int3 groupThreadID : SV_GroupThreadID,
             h_attenuation = h_attenuation - 0.5;//pow(h_attenuation, 0.98) // 
             positionOffset = 1.05 * positionOffset + 350;
         }
-        humidity = max(min(humidity, 4.0),0.0);
+        humidity = max(min(humidity, 2.0),0.0);
 
         //          from terrain-ds:
         const half minGlobalTemp = -37.0;//`C
@@ -143,8 +143,12 @@ void main(int3 groupThreadID : SV_GroupThreadID,
             + (dot(wind, -aspect) *0.0)  ); // rainshadow effect - it is more humid on slopes that face the wind
         //+ perlin(seedc.xz / (scale * 99)) +1
         //)/ altitude ; //
-        humidity = pow((humidity - 0.5) * 1.75, 5) + 0.0;// shift most values closer to 0.5 */
-
+        
+        humidity = saturate(sqrt(humidity / 1.0) + min(macro_height, 0) / 1.60);
+        
+        humidity = pow((humidity - 0.5) * 1.75, 5) + 0.50;// shift most values closer to 0.5 */
+        
+        
 
     }
     //*/
@@ -155,7 +159,7 @@ void main(int3 groupThreadID : SV_GroupThreadID,
 	[unroll]    /// what does this do
 
     output.a = height;
-    output.r = sqrt(humidity / 1.0)-1;// +min(macro_height, 0) / 1.60;//
+    output.r = humidity;//
 
     output.g = slope; // / manipulationDetails.z;
     output.b = 0.01 * height / (1+pow(manipulationDetails.z,3));

@@ -212,8 +212,8 @@ OutputType main(ConstantOutputType input, float2 uvwCoord : SV_DomainLocation, c
     }
 
     // beachline
-    const half beachline = 0.3; //altitude at which beaches meet soil
-    output.beachness = saturate(slope) * saturate(2 * altitude - (2*bfm(seedc.xz / (scale * 12), 4)) - beachline);
+    const half beachline = 0.83; //altitude at which beaches meet soil
+    output.beachness = saturate(slope) * saturate(2 * altitude - (4*bfm(seedc.xz / (scale * 12), 4)) - beachline);
 
     if (output.world_position.y > -5) {
 

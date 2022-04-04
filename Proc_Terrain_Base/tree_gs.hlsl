@@ -199,7 +199,7 @@ void main(point InputType input[1], inout TriangleStream<OutputType> triStream)
 
             bool valid_foliage = (pos_infront_of_camera && input[0].humidity + noisevalue > 0.7);
             bool valid_grass = !tree_mode && valid_foliage && dist < 700;
-            bool valid_tree = tree_mode && valid_foliage && slope <= 0.01 && abs(noisevalue) > 0.5;
+            bool valid_tree = tree_mode && valid_foliage && slope <= 0.01 && noise(input[0].world_position.xz) > 0.7;
 
             if (valid_grass){
                 output.treeType = 0;

@@ -83,7 +83,7 @@ OutputType main(InputType input)
     output.worldPosition.x = int(output.worldPosition.x / alignment) * alignment;
     output.worldPosition.z = int(output.worldPosition.z / alignment) * alignment;
 
-    float jitter_radius = alignment * 2 / 5.0;// try to hide the grid-alignment look on generated foliage
+    float jitter_radius = alignment * (3 / 5.0);// try to hide the grid-alignment look on generated foliage
     float2 jitter = { noise(output.worldPosition.xz + 0.4115) * jitter_radius,noise(output.worldPosition.zx + 0.4115) * jitter_radius };
     output.worldPosition.xz += jitter;
     
