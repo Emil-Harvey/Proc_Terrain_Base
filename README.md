@@ -54,7 +54,7 @@ This is a list of features that have been implemented in some form or another
  <h4>Screenshots:</h4>
  
  
-![Winter Coast](https://github.com/Emil-Harvey/Proc_Terrain_Base/blob/master/Gallery/PROTER-GSE%20Winter%20Coast%2019-3-22.png?raw=true)
+![Trees at sunrise](https://github.com/Emil-Harvey/Proc_Terrain_Base/blob/master/Gallery/Trees%20at%20Sunrise%204-4-22.png?raw=true)
  
 ![Isometric View of Coast](https://github.com/Emil-Harvey/Proc_Terrain_Base/blob/master/Gallery/PROTER-GSE%20Isometric%20View%2019-3-22.png?raw=true)
  
@@ -62,18 +62,18 @@ This is a list of features that have been implemented in some form or another
   
 ![1-Bit Bayer Dithering](https://github.com/Emil-Harvey/Proc_Terrain_Base/blob/master/Gallery/PROTER-GSE%201-Bit%20dithering%2019-3-22.png?raw=true)
    
-![Desert Hills](https://github.com/Emil-Harvey/Proc_Terrain_Base/blob/master/Gallery/PROTER-GSE%20Desert%20Hills%2019-3-22.png?raw=true)
+![Savannah Hills](https://github.com/Emil-Harvey/Proc_Terrain_Base/blob/master/Gallery/Savannah%204-4-22.png?raw=true)
 
 ![4-bit dithering](https://github.com/Emil-Harvey/Proc_Terrain_Base/blob/master/Gallery/PROTER-GSE%204-Bit%20dithering%2019-3-22.png?raw=true)
  
 ![White Noise Dithering](https://github.com/Emil-Harvey/Proc_Terrain_Base/blob/master/Gallery/PROTER-GSE%20White%20Noise%20Dithering%2019-3-22.png?raw=true)
  
-![Med Coast](https://github.com/Emil-Harvey/Proc_Terrain_Base/blob/master/Gallery/PROTER-GSE%20Med%20Coast%2019-3-22.png?raw=true)
+![Winter Coast](https://github.com/Emil-Harvey/Proc_Terrain_Base/blob/master/Gallery/PROTER-GSE%20Winter%20Coast%2019-3-22.png?raw=true)
 
  
 <h4>Previous features to be re-implemented:</h4>
 
- ♦  Procedural trees with seasonal colouration
+ ♦  More trees with seasonal colouration
  
  ♦  Shadows
  
