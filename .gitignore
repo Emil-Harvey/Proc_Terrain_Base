@@ -1,6 +1,6 @@
 #images
 *.jpg
-*.png
+#*.png
 
 
 ## Ignore Visual Studio temporary files, build results, and

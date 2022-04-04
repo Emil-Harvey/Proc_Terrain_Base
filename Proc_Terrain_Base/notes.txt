@@ -16,7 +16,7 @@ FOLIAGE
 keep scale static, only resolution matters
  - render trees farther than grass; separate meshes, maybe separate shaders for each
 
-'PBR billboards':
+'PBR billboards': need to have world-space normals
 - https://sickheadgames.artstation.com/projects/xe24r
 - http://silvadorblog.blogspot.com/2017/09/improving-normal-map-on-billboards.html
 
