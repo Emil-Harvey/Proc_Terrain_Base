@@ -9,7 +9,7 @@ cbuffer DataBuffer : register(b0)
     float time;
     int tessellationFactor;
     float3 manipulationDetails;
-    float2 globalPosition;/// careful, water shader wont work anymore
+    float2 globalPosition;
     float2 padding_;
 };
 cbuffer CameraBuffer : register(b1)
@@ -43,16 +43,18 @@ struct OutputType
     float4 position : POSITION;
     float2 tex : TEXCOORD0;
     float3 normal : NORMAL;
-    float heightMapAmplitude : PSIZE0; //one of the only float semantics, simpler to pass here than use another buffer
+    //float heightMapAmplitude : PSIZE0; //one of the only float semantics, simpler to pass here than use another buffer
     
 };
 float calculateLOD(float3 v)// inspired by frank luna
 {
-    float viewangle = 1- saturate(dot(float3(viewMatrix[0][2], 0, viewMatrix[2][2]), normalize(v - viewpos)));
+    float3 fwd = float3(viewMatrix[0][2], viewMatrix[1][2], viewMatrix[2][2]);// camera forward
+    float infrontness = abs(length(normalize(fwd) + normalize(v - viewpos))) ;//viewangle = 1- saturate(cross(float3(viewMatrix[0][2], 0, viewMatrix[2][2]), normalize(v - viewpos)));
     float dist =  sqrt(length(v - viewpos)); // how near the cam is
-    float LOD = viewangle * saturate(( dist - manipulationDetails.y) / (manipulationDetails.y - manipulationDetails.z)); // (dist - near threshold) / (near threshold - far theshold)
-    return pow(2, lerp(tessellationFactor, 0, LOD));
-    //tesselation factor will be 2^n, where 0 >= n <= 6 & is based on the distance of the patch (maxing out at 250, with no tess, minimum at 40, with 2^6=64 tes'ns) 
+    float LOD = saturate(infrontness-0.8)* (1-saturate((dist - manipulationDetails.y) / (manipulationDetails.y - manipulationDetails.z))); // (dist - near threshold) / (near threshold - far theshold)
+    
+    return pow(2, lerp(0, tessellationFactor, LOD));
+    //tesselation factor will be 2^n, where 0 <= n <= 6 & is based on the distance of the patch (maxing out at 250, with no tess, minimum at 40, with 2^6=64 tes'ns) 
 }
 
 ConstantOutputType PatchConstantFunction(InputPatch<InputType, 4> inputPatch, uint patchId : SV_PrimitiveID)
@@ -97,9 +99,12 @@ OutputType main(InputPatch<InputType, 4> patch, uint pointId : SV_OutputControlP
 {
     OutputType output;
 
+    float3 fwd = float3(viewMatrix[0][2], viewMatrix[1][2], viewMatrix[2][2]);// camera forward
+    float infrontness = length(normalize(fwd) + normalize(patch[0].worldPosition - viewpos));
 
     // Set the position for this control point as the output position.
     output.position = patch[pointId].position;
+    //output.position.x += infrontness* 1;
 
     // Set the input as the output.
     //output.colour = patch[pointId].colour;

@@ -126,6 +126,7 @@ void TessShader::setShaderParameters(ID3D11DeviceContext* dc, const XMMATRIX& wo
 	dataPtr->projection = tproj;
 	dc->Unmap(matrixBuffer, 0);
 	dc->VSSetConstantBuffers(0, 1, &matrixBuffer);
+	dc->HSSetConstantBuffers(2, 1, &matrixBuffer);
 	dc->DSSetConstantBuffers(0, 1, &matrixBuffer);
 	if (GeoShaderActive) dc->GSSetConstantBuffers(0, 1, &matrixBuffer);//
 

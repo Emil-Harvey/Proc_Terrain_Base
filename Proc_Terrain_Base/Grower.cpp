@@ -43,7 +43,7 @@ void Grower::setShaderParameters(ID3D11DeviceContext* deviceContext, const XMMAT
 	deviceContext->Map(cameraBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 	posPtr = (CameraBufferType*)mappedResource.pData;
 	auto inverse = XMMatrixInverse(&XMMatrixDeterminant(view), view);
-	XMStoreFloat3(&posPtr->position, inverse.r[3]);
+	XMStoreFloat3(&posPtr->position, inverse.r[3]);// position of camera
 	// Tell Vert shader whether rendering grass (dense) or trees
 	if (trees)
 		posPtr->padding = 15;

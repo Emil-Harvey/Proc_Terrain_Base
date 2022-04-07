@@ -6,6 +6,10 @@ Seamless Terrain + "instant" terrain generation:
   - what res to make the heightmap?
 
 - terrain = heightmapped Tessellationmesh (probably equal spacing not fractional) done!
+ - speed up generation: reduce size of planes and increase amount, more circular or even pizza shaped
+ - 16x16 individual heightmaps, not really an increase in memory yet more seamless
+    - should solve issue of view-space culling 
+
 
 clouds- flat quad + vertical billboard above, rgba density & lighting 'PBR' (textures)
 - - rain as geo shader particles

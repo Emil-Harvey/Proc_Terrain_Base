@@ -27,6 +27,7 @@ protected:
 		float time = 0;
 		int factor = 1;// tessellation factor
 		XMFLOAT3 extra = { 0,0,0 };// manipulation details
+		XMFLOAT4 padding;
 	};
 
 public:
