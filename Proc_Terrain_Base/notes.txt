@@ -9,7 +9,7 @@ Seamless Terrain + "instant" terrain generation:
  - speed up generation: reduce size of planes and increase amount, more circular or even pizza shaped
  - 16x16 individual heightmaps, not really an increase in memory yet more seamless
     - should solve issue of view-space culling 
-
+    - experiment: find out whether 16x16 tess-planes helps performance more, or 1 is better bc fewer draw-calls
 
 clouds- flat quad + vertical billboard above, rgba density & lighting 'PBR' (textures)
 - - rain as geo shader particles
@@ -35,6 +35,8 @@ keep scale static, only resolution matters
 why is lofi scree texture dark? (prob bc of bit depth or something) *fixed?
 
 Biome Texturing:
+ ¬  temperature: aspect has minimal effect; add continental-scale- swirl noise, 3 octaves..
+ ¬  Climate: pressure based humidity... https://www.youtube.com/watch?v=dQQqRKGbNKY
  -  Macro texture variation -- implemented but could be improved. i.e. albedo only (make albedo Tex()...)
  -  Grass chlorophyll count; green - straw colour
  -  Stone/soil geology - iron content (rustiness); soil nutrients/wetness (darker); sandiness (beige - lack of soil)
