@@ -51,7 +51,7 @@ float noise(float2 xy) // gives value between 0 and 1, tends toward 0.5
     float seed = 74981.87126386f;//21732.37f;
     float random = seed * 9.01230387 + sin(xy.x + xy.y * seed) * cos(xy.x * xy.y + seed) * seed + xy.x + xy.x / xy.y + seed * xy.y - sin(seed - xy.y);
     //return fmod(random, 1);
-    return 0.5 * sin(random) + 0.5;
+    return 1.0 * sin(random) + 0.0;
 }
 float3 calculateNormal(float2 pos, float h = 5.0 / 5.0f)
 {
@@ -83,8 +83,8 @@ OutputType main(InputType input)
     output.worldPosition.x = int(output.worldPosition.x / alignment) * alignment;
     output.worldPosition.z = int(output.worldPosition.z / alignment) * alignment;
 
-    float jitter_radius = alignment * (3 / 5.0);// try to hide the grid-alignment look on generated foliage
-    float2 jitter = { noise(output.worldPosition.xz + 0.4115) * jitter_radius,noise(output.worldPosition.zx + 0.4115) * jitter_radius };
+    float jitter_radius = alignment * (3.0 / 5.0);// try to hide the grid-alignment look on generated foliage
+    float2 jitter = { noise(output.worldPosition.xz + float2(0.4115,0.31271)) * jitter_radius, noise(output.worldPosition.zx + float2(0.4115,0.31271)) * jitter_radius };
     output.worldPosition.xz += jitter;
     
     float4 heightmapSampled = HEIGHT.SampleLevel(s0, (output.worldPosition.xz / 11520.0) + 0.5, 0);

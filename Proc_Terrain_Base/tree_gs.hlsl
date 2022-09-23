@@ -186,11 +186,11 @@ void main(point InputType input[1], inout TriangleStream<OutputType> triStream)
             float dist = length(dir);
             
             if (dist > 750)
-                geometry_type = 1;
+                geometry_type = 1;// billboard
             else if (dist > 150)
-                geometry_type = 2;
+                geometry_type = 2;// rotated billboard
             else
-                geometry_type = 3;
+                geometry_type = 3;// animated cross mesh
 
 
             float3 crosp = cross(fwd, normalize(dir));
@@ -207,7 +207,7 @@ void main(point InputType input[1], inout TriangleStream<OutputType> triStream)
             }
             else if (valid_tree) {
                 output.treeType = 3;
-                quadSize = float2(15 + 8.5 * noisevalue, 15 + 8.5 * noisevalue);
+                quadSize = float2(20 + 13.5 * noisevalue, 20 + 13.5 * noisevalue);
             }
             //else
             //    output.treeType = 2;

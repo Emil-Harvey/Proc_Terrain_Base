@@ -77,7 +77,7 @@ private:
 
 	ShaderVariables vars;
 
-	ID3D11ShaderResourceView* textures[36];
+	ID3D11ShaderResourceView* textures[18];
 	ID3D11ShaderResourceView* trees[4];
 	ID3D11ShaderResourceView* cloudTexture;
 	ID3D11ShaderResourceView* rainTexture;
@@ -93,9 +93,9 @@ private:
 	// misc
 	float test = 0.1;
 	// TOD sim
-	float time = 9.00;
+	float time = 11.00;
 	bool unpaused = true;
-	float timeOfYear = 54.0;//
+	//float timeOfYear = 54.0;//
 	float timescale = 1.0;
 	// bools
 	bool floraOn = false;

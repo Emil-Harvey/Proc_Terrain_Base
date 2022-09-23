@@ -3,18 +3,18 @@
 
 struct Material
 {
-    Texture2D albedo;
-    Texture2D height;
-    Texture2D normal;
-    Texture2D specular;
+    Texture2D albedo_specular;
+    //Texture2D height;
+    Texture2D normal_height;
+    //Texture2D specular;
     //float UVscale; //= 1;
 };
 struct MaterialSample
 {
-    float4 albedo;
-    float4 height;
-    float4 normal;
-    float4 specular;
+    float4 albedo_specular;
+    //float4 height;
+    float4 normal_height;
+    //float4 specular;
 };
 struct HSLcolour {
     float h;
@@ -70,24 +70,26 @@ Texture2D tWater : register(t4);// water
 Texture2D tSand : register(t5);// sand
 Texture2D tGrass2 : register(t6);// grass2
 Texture2D tStone : register(t7); // sea stone / gravel
-//  height
-Texture2D hGrass : register(t8); // grass
-Texture2D hCliff : register(t9); // low cliff
-Texture2D hSnow : register(t10); // snow
-Texture2D hRock : register(t11); // high cliff
-Texture2D hWater : register(t12); // water
-Texture2D hSand : register(t13); // sand
-Texture2D hGrass2 : register(t14); // grass2
-Texture2D hStone : register(t15); // sea stone / gravel
+Texture2D tSavan : register(t8);
 // normal
-Texture2D nGrass : register(t16); // grass
-Texture2D nCliff : register(t17); // low cliff
-Texture2D nSnow : register(t18); // snow
-Texture2D nRock : register(t19); // high cliff
-Texture2D nWater : register(t20); // water
-Texture2D nSand : register(t21); // sand
-Texture2D nGrass2 : register(t22); // grass2
-Texture2D nStone : register(t23); // sea stone / gravel
+Texture2D nGrass : register(t9); // grass
+Texture2D nCliff : register(t10); // low cliff
+Texture2D nSnow : register(t11); // snow
+Texture2D nRock : register(t12); // high cliff
+Texture2D nWater : register(t13); // water
+Texture2D nSand : register(t14); // sand
+Texture2D nGrass2 : register(t15); // grass2
+Texture2D nStone : register(t16); // sea stone / gravel
+Texture2D nSavan : register(t17);
+/*/  height
+Texture2D hGrass : register(t16); // grass
+Texture2D hCliff : register(t17); // low cliff
+Texture2D hSnow : register(t18); // snow
+Texture2D hRock : register(t19); // high cliff
+Texture2D hWater : register(t20); // water
+Texture2D hSand : register(t21); // sand
+Texture2D hGrass2 : register(t22); // grass2
+Texture2D hStone : register(t23); // sea stone / gravel
 // specularity
 Texture2D sGrass : register(t24); // grass
 Texture2D sCliff : register(t25); // low cliff
@@ -97,11 +99,10 @@ Texture2D sWater : register(t28); // water
 Texture2D sSand : register(t29); // sand
 Texture2D sGrass2 : register(t30); // grass2
 Texture2D sStone : register(t31); // sea stone / gravel
-//
-Texture2D tSavan : register(t32);
-Texture2D hSavan : register(t33);//
-Texture2D nSavan : register(t34);
-Texture2D sSavan : register(t35);
+/*/
+
+//Texture2D hSavan : register(t33);//
+//Texture2D sSavan : register(t35);
 
 
 
@@ -222,7 +223,7 @@ float4 Tex(Texture2D t, triplanarUVs uv)//
                      col2 * uv.blendWeights.y +
                      col3 * uv.blendWeights.z;
 
-  float coefficient = (hSavan.Sample(s0, uv.texY * 0.002).x + 0.5) * (hSavan.Sample(s0, uv.texY * 0.05).x + 0.5) * (hSavan.Sample(s0, uv.texY * 0.2).x + 0.5);
+  float coefficient = (nSavan.Sample(s0, uv.texY * 0.002).a + 0.5) * (nSavan.Sample(s0, uv.texY * 0.05).a + 0.5) * (nSavan.Sample(s0, uv.texY * 0.2).a + 0.5);// savan is a placeholder
   texColour.xyz *= lerp(float3(0.52, 0.51, 0.50), float3(1, 1, 1), coefficient); //       MACRO TEXTURE VARIATION - inspired by unreal engine 4
   return texColour;//(t.Sample(s0, uv)); //+t.Sample(s0, i.tex * 0.1)) / 3;
     
@@ -231,44 +232,44 @@ float4 Tex(Texture2D t, triplanarUVs uv)//
 //
 MaterialSample heightBlend(Material m1, Material m2, float bias, triplanarUVs uv)
 {// uses a constant blending factor (0.1)
-    float h1 = Tex(m1.height, uv).y * (1 - bias);
-    float h2 = Tex(m2.height, uv).y * bias;
+    float h1 = Tex(m1.normal_height, uv).a * (1 - bias);
+    float h2 = Tex(m2.normal_height, uv).a * bias;
     float blendPoint = max(h1, h2) - 0.1;
     float w1 = max(h1 - blendPoint, 0);// weight
     float w2 = max(h2 - blendPoint, 0);
     MaterialSample output;
-    output.albedo = ((Tex(m1.albedo, uv) * w1) + (Tex(m2.albedo, uv) * w2)) / (w1 + w2);
-    output.height = ((Tex(m1.height, uv) * w1) + (Tex(m2.height, uv ) * w2)) / (w1 + w2);
-    output.normal = ((Tex(m1.normal, uv) * w1) + (Tex(m2.normal, uv) * w2)) / (w1 + w2);
-    output.specular = ((Tex(m1.specular, uv) * w1) + (Tex(m2.specular, uv) * w2)) / (w1 + w2);
+    output.albedo_specular = ((Tex(m1.albedo_specular, uv) * w1) + (Tex(m2.albedo_specular, uv) * w2)) / (w1 + w2);
+    output.normal_height = ((Tex(m1.normal_height, uv) * w1) + (Tex(m2.normal_height, uv) * w2)) / (w1 + w2);
+    //output.height = ((Tex(m1.normal_height.a, uv) * w1) + (Tex(m2.height, uv ) * w2)) / (w1 + w2);//output.normal.a;//
+    //output.specular = ((Tex(m1.specular, uv) * w1) + (Tex(m2.specular, uv) * w2)) / (w1 + w2);//output.albedo.a;//
     return output;
 }
 MaterialSample heightBlend(MaterialSample m1, MaterialSample m2, float bias, triplanarUVs uv)
 { // uv is unused
-    float h1 = m1.height * (1 - bias);
-    float h2 = m2.height * bias;
+    float h1 = m1.normal_height.a * (1 - bias);
+    float h2 = m2.normal_height.a * bias;
     float blendPoint = max(h1, h2) - 0.21;///       *
     float w1 = max(h1 - blendPoint, 0); // weight
     float w2 = max(h2 - blendPoint, 0);
     MaterialSample output;
-    output.albedo = ((m1.albedo * w1) + (m2.albedo * w2)) / (w1 + w2);
-    output.height = ((m1.height * w1) + (m2.height * w2)) / (w1 + w2);
-    output.normal = ((m1.normal * w1) + (m2.normal * w2)) / (w1 + w2);
-    output.specular = ((m1.specular * w1) + (m2.specular * w2)) / (w1 + w2);
+    output.albedo_specular = ((m1.albedo_specular * w1) + (m2.albedo_specular * w2)) / (w1 + w2);
+    output.normal_height = ((m1.normal_height * w1) + (m2.normal_height * w2)) / (w1 + w2);
+    //output.height = ((m1.height * w1) + (m2.height * w2)) / (w1 + w2);//output.normal.a;//
+    //output.specular = ((m1.specular * w1) + (m2.specular * w2)) / (w1 + w2);//output.albedo.a;//
     return output;
 }
 MaterialSample heightBlend(MaterialSample m1, Material m2, float bias, triplanarUVs uv)
 { // uv is used for m2
-    float h1 = m1.height * (1 - bias);
-    float h2 = Tex(m2.height, uv ).y * bias;
+    float h1 = m1.normal_height.a * (1 - bias);
+    float h2 = Tex(m2.normal_height, uv ).a * bias;
     float blendPoint = max(h1, h2) - 0.1;
     float w1 = max(h1 - blendPoint, 0); // weight
     float w2 = max(h2 - blendPoint, 0);
     MaterialSample output;
-    output.albedo = ((m1.albedo * w1) + (Tex(m2.albedo, uv) * w2)) / (w1 + w2);
-    output.height = ((m1.height * w1) + (Tex(m2.height, uv ) * w2)) / (w1 + w2);
-    output.normal = ((m1.normal * w1) + (Tex(m2.normal, uv) * w2)) / (w1 + w2);
-    output.specular = ((m1.specular * w1) + (Tex(m2.specular, uv) * w2)) / (w1 + w2);
+    output.albedo_specular = ((m1.albedo_specular * w1) + (Tex(m2.albedo_specular, uv) * w2)) / (w1 + w2);
+    output.normal_height = ((m1.normal_height * w1) + (Tex(m2.normal_height, uv) * w2)) / (w1 + w2);
+    //output.height = ((m1.height * w1) + (Tex(m2.height, uv ) * w2)) / (w1 + w2);//output.normal.a;//
+    //output.specular = ((m1.specular * w1) + (Tex(m2.specular, uv) * w2)) / (w1 + w2);//output.albedo.a;//
     return output;
 }
 
@@ -294,7 +295,10 @@ float3 calculateNormals(float2 tex, Texture2D heightMap)
 
 float4 main(InputType input) : SV_TARGET
 {
-    //clip(length(input.world_position.xz - viewpos.xz) > 2000.0 ? 0.25 * sin(input.position.x * 1800.32) * sin(input.position.y * 3800.018)/*(((input.position.x % 2.5) - 1.25) * ((input.position.y % 2.5) - 1.25))*/ : 1);
+    float dist = length(input.world_position.xz - viewpos.xz);// nice little dither fade of render distance
+    const float clip_near = 3000.0;
+    const float fade_dist = 1500.0;
+    clip(dist > clip_near ? ((clip_near+ fade_dist -dist)/ fade_dist) + (((input.position.x % 2.5) - 1.25) * ((input.position.y % 2.5) - 1.25)) : 1);
 
     //const float PI180 = 57.29577;
     /*const*/triplanarUVs uv;// = input.tex;
@@ -326,16 +330,16 @@ float4 main(InputType input) : SV_TARGET
     Material stone;
     Material savan;// dust
     
-    //  albedo                  heightmap                   normalmap               specular map
-    grass.albedo = tGrass;    grass.height = hGrass;    grass.normal = nGrass;grass.specular = sGrass;
-    cliff.albedo = tCliff;    cliff.height = hCliff;    cliff.normal = nCliff;    cliff.specular = sCliff;
-    stone.albedo = tStone;    stone.height = hStone;    stone.normal = nStone;    stone.specular = sStone;
-    sand.albedo = tSand;    sand.height = hSand;    sand.normal = nSand;    sand.specular = sSand;
-    rock.albedo = tRock;    rock.height = hRock;    rock.normal = nRock;    rock.specular = sRock;
-    water.albedo = tWater;    water.height = hWater;    water.normal = nWater;    water.specular = sWater;
-    snow.albedo = tSnow;    snow.height = hSnow;    snow.normal = nSnow;    snow.specular = sSnow;
-    grass2.albedo = tGrass2;    grass2.height = hGrass2;    grass2.normal = nGrass2;    grass2.specular = sGrass2;
-    savan.albedo = tSavan;    savan.height = hSavan;    savan.normal = nSavan;    savan.specular = sSavan;
+    //  albedo_specular                       normal_height-map   
+    grass.albedo_specular = tGrass;      grass.normal_height = nGrass;
+    cliff.albedo_specular = tCliff;      cliff.normal_height = nCliff;
+    stone.albedo_specular = tStone;      stone.normal_height = nStone;
+    sand.albedo_specular = tSand;        sand.normal_height = nSand;  
+    rock.albedo_specular = tRock;        rock.normal_height = nRock;  
+    water.albedo_specular = tWater;      water.normal_height = nWater;
+    snow.albedo_specular = tSnow;        snow.normal_height = nSnow;  
+    grass2.albedo_specular = tGrass2;    grass2.normal_height = nGrass2;
+    savan.albedo_specular = tSavan;      savan.normal_height = nSavan;
 
 
 	// Sample the texture. Calculate light intensity and colour, return light*texture for final pixel colour.
@@ -355,14 +359,14 @@ float4 main(InputType input) : SV_TARGET
         float aridness = ((input.temperature + 17.0) / 45.0) * input.humidity;
         // blend the textures based on biome parameters, and using the heightmap of each texture (height blend) for more realistic texturing
         if (input.steepness <= 0.1) {
-            textureColour = Tex(cliff.albedo, uv);//float4( 0.0,0.0,0.9,1.0 );//
-            textureNormal = Tex(cliff.normal, uv);
-            textureShine = Tex(cliff.specular, uv);
+            textureColour = Tex(cliff.albedo_specular, uv);//float4( 0.0,0.0,0.9,1.0 );//
+            textureNormal = Tex(cliff.normal_height, uv);
+            //textureShine = Tex(cliff.specular, uv);
         }
         else if (input.steepness >= 0.9 && input.snowness >= 0.9) {
-            textureColour = Tex(snow.albedo, uv);//float4(0.0, 0.5, 0.9, 1.0);
-            textureNormal = Tex(snow.normal, uv);
-            textureShine = Tex(snow.specular, uv);
+            textureColour = Tex(snow.albedo_specular, uv);//float4(0.0, 0.5, 0.9, 1.0);
+            textureNormal = Tex(snow.normal_height, uv);
+            //textureShine = Tex(snow.specular, uv);
         
         }
     /*    else if (input.beachness >= 1) {
@@ -382,9 +386,9 @@ float4 main(InputType input) : SV_TARGET
             currentMat = heightBlend( heightBlend(heightBlend(heightBlend(stone, sand, input.noise, uv), heightBlend(heightBlend(grass2, grass, input.noise2, uv), heightBlend(rock, savan, input.temperature / 22.4, uv), 1-aridness, uv), input.beachness, uv), snow, input.snowness, uv), cliff, 1- input.steepness, uv);
             //heightBlend(rock, cliff, input.temperature, uv)
 
-            textureColour = currentMat.albedo; //float4(snowness, snowness, snowness, 1.0); //
-            textureNormal = currentMat.normal;
-            textureShine = currentMat.specular;
+            textureColour = currentMat.albedo_specular; //float4(snowness, snowness, snowness, 1.0); //
+            textureNormal = currentMat.normal_height;
+            //textureShine = currentMat.specular;
             //
         }
         
@@ -393,7 +397,7 @@ float4 main(InputType input) : SV_TARGET
     //  LIGHTING / SUNLIGHT
     LightInfo sunlight = calculateSunlightInfo(input.world_position);
 
-        lightColour =calculateLighting(-sunlight.direction, input.normal + textureNormal, sunlight.colour);//calculateLighting(-lightDirection, input.normal + textureNormal, diffuseColour); 
+    lightColour = calculateLighting(-sunlight.direction, input.normal + textureNormal.xyz, sunlight.colour);//calculateLighting(-lightDirection, input.normal + textureNormal, diffuseColour); 
     
      //add wetness effects at beach
     if (altitude <= 0.2)
@@ -458,8 +462,8 @@ float4 main(InputType input) : SV_TARGET
     //textureColour.r = input.humidity; //input.wind.x;//temperature / 36.6; //
     //textureColour.g = 0.0; //cos(input.temperature / 15); //snowness; //wind.x;//
     //textureColour.b = input.temperature / -37.0; //wind.y;//
-    float4 pixelColour = textureColour * (lightColour+ sunlight.ambient) + (sunlight.colour * textureShine.x * calculateSpecular(-sunlight.direction, input.normal, sunlight.colour, view));
-
+    float4 pixelColour = textureColour * (lightColour+ sunlight.ambient) + (sunlight.colour * textureColour.a * calculateSpecular(-sunlight.direction, input.normal, sunlight.colour, view));
+    pixelColour.a = 1.0;
     //if (int((input.position.x + (timeOfYear * 20000 * input.windScreenDir))  ) % 67 == 0 && int(input.position.y - (timeOfYear * 50000))% 67 == 0)
     //    pixelColour.xy = 0.0; // snow
     

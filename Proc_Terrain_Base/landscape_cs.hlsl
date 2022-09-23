@@ -30,6 +30,54 @@ float flow(float2 i, int octaves) {
         return bfm(i + bfm(i+bfm(i,octaves/3.0),octaves/1.5),octaves);
 }
 
+float hash12(float2 p)
+{
+    float3 p3 = frac(float3(p.xyx) * .1031);
+    p3 += dot(p3, p3.yzx + 33.33);
+    return frac((p3.x + p3.y) * p3.z);
+}
+float2 random_offset(float seed) {
+    return float2(100.0 + hash12(float2(seed, 0.0)) * 100.0,
+                  100.0 + hash12(float2(seed, 1.0)) * 100.0);
+}
+float NoiseTexture(float2 coords, float scale,int octs, float roughness,float distortion)
+{
+    float val = 0;
+    //float weight = 1;
+
+    float2 d_coords = coords * scale;
+
+    if (distortion >= 0.0) {
+        d_coords += float2(perlin(d_coords + random_offset(0.0)) * distortion,  //
+                           perlin(d_coords + random_offset(1.0)) * distortion); //
+    }
+    
+    
+    /*
+    for (int layers = 0; layers < distortion; layers++)
+    {
+        float d = (distortion > 0.0) ? (0.5+0.8*bfm(scale * d_coords, int(distortion)+1)) * 401.0 *saturate(distortion): 0.0;//
+    
+        d_coords = float2(d,d)  ;// distorted coords (perlin(scale * coords)*9999.0)
+    }*/
+    
+
+
+
+
+    for (int o = 0; o < octs; o++)
+    {
+        int freqMultiplier = 4;//1.125;// default = 2
+        float h = perlin(scale * d_coords * pow(4, o)) / pow(2.0 , o);//-saturate(roughness)
+        //h *= h;
+        //h *= weight;
+        //weight = h;
+        val += h;
+
+    }
+    return val; // ensure output is between 0 & 1.0
+}
+
 float invsmoothstep(float y)
 {// fast inverse
     float yn = 2.0 * y - 1.0;
@@ -64,8 +112,40 @@ float get_terrain_height(float2 input, float octaves) {
 
     return ret;
 }
+float get_alt_terrain_height(float2 input, float octaves) // a revised terrain algorithm after experimentation in blender
+{
+    float height = 0;
+    float2 alt_input = input + float2(55.4, 35.1);
+    float scale_coeff = scale * 1000.0;
 
-float3 calculateNormal(float2 pos, int octaves, float h = 1.0 / 50.0f) // inefficient
+    // to start, get some noise that will be used to vary how rough the noises are and much they are distorted.
+    float roughness_noise = saturate(0.5+0.6 * NoiseTexture(input, 0.16/ scale_coeff, 5, 0.5, 0.5));//bfm(input / scale_coeff,15 );//
+    float distortion_noise = saturate(0.5 + 0.6 * NoiseTexture(alt_input, 0.16 / scale_coeff, 1, 0.5, 0.5));
+
+    float mountain_noise = 1.3-2.0*abs(NoiseTexture(input, 3.6 / scale_coeff, 5, roughness_noise, 1.0+distortion_noise));
+    float valley_noise = abs(NoiseTexture(alt_input, 3.6 / scale_coeff, 4, roughness_noise, 1.0 + distortion_noise));
+
+    height = mountain_noise * valley_noise;//
+    
+    float macro_vary_noise = NoiseTexture(alt_input, 0.66 / scale_coeff, 5, roughness_noise, distortion_noise);
+
+    height = /*smooth*/max(macro_vary_noise + height, macro_vary_noise * height);
+
+    // APPLY SCALING/SMOOTHING (inv sm. step)...
+    // make sure height is centred on 0
+
+    float subcontinent_noise = NoiseTexture(input, 0.6 / scale_coeff, octaves, 0.9589, min(distortion_noise,0.7));
+
+    height *= 59.8 * scale;
+    subcontinent_noise *= 53.4 * scale;
+
+    height += subcontinent_noise;
+    //...
+    return height;
+}
+
+
+float3 calculateNormal(float2 pos, int octaves, float h = 1.0 / 50.0f) // inefficient- uses get_terrain_height four times
 {
 
     ///   int octaves = int(lerp(10, 2, saturate(length(viewpos.xz - pos) / 595.0)));
@@ -77,12 +157,12 @@ float3 calculateNormal(float2 pos, int octaves, float h = 1.0 / 50.0f) // ineffi
     float3 bitangent;
     const float2 ux = float2(pos.x - h, pos.y); //neighbour to left
     const float2 vx = float2(pos.x + h, pos.y); //neighbour to right
-    float xdy = 1 * get_terrain_height(ux, octaves) - 1 * get_terrain_height(vx, octaves);
+    float xdy = 1 * get_alt_terrain_height(ux, octaves) - 1 * get_alt_terrain_height(vx, octaves);
     tangent = normalize(float3(2 * h, xdy, 0));
     // same for bitangent but in z dimension
     const float2 uz = float2(pos.x, pos.y - h); //behind
     const float2 vz = float2(pos.x, pos.y + h); //in front
-    float zdy = 0.75 * get_terrain_height(uz, octaves) - 0.75 * get_terrain_height(vz, octaves);
+    float zdy = 0.75 * get_alt_terrain_height(uz, octaves) - 0.75 * get_alt_terrain_height(vz, octaves);
     bitangent = normalize(float3(0, zdy, -2 * h));
 
     return normalize(cross(tangent, bitangent));
@@ -94,7 +174,7 @@ void main(int3 groupThreadID : SV_GroupThreadID,
 {
     const double c = 7.680;// scale factor ->: 1500 * 7.68 = 11520 { the world_position/size of the 3x3 terrain meshes }
     const float2 coords = { (dispatchThreadID.x * c) + seed.x + globalPosition.x , (dispatchThreadID.y * c) + seed.y + globalPosition.y };
-    const float height = get_terrain_height(coords, 20.0);
+    const float height = get_alt_terrain_height(coords, 20.0);
 
     const float macroScale = 3.0;
     const float2 macroCoords = { (((dispatchThreadID.x * c) - 5760) * macroScale) + 5760 + seed.x + globalPosition.x , (((dispatchThreadID.y * c) - 5760) * macroScale) + 5760 + seed.y + globalPosition.y };
@@ -113,7 +193,7 @@ void main(int3 groupThreadID : SV_GroupThreadID,
     
     float humidity = 0;// calculate humidity 
     //*
-    if (height <= 0)
+    if (true || height <= 0)
         humidity = 99;// underwater, duh
     else {
         float h_attenuation = 10.0 / 1.0; // how far humidity is carried from 'water sources' 
@@ -171,7 +251,7 @@ void main(int3 groupThreadID : SV_GroupThreadID,
 
     //output = gOutput[(int2)(((dispatchThreadID.xy - 750) * macroScale) + 750)];
 
-    if (manipulationDetails.z > 1.0) {
+    if (false && manipulationDetails.z > 1.0) {
         output.r = gInput[dispatchThreadID.xy + wind.xy].r * 0.95
             + (gInput[dispatchThreadID.xy + (wind.xy * 2)].r * 0.8)
             + (gInput[dispatchThreadID.xy + (wind.xy * 4)].r * 0.6)
@@ -201,7 +281,7 @@ float2 gradient(int x, int y)
     // makes the random gradients for the given grid coordinate
     float seed = 21732.37f;
     //float random = (seed / 100) * sin(x * (seed / 11.0923) + y * (seed / 2.62349) + seed / 32.12379) * cos(x * (seed / 8.812934) * y + y * y * seed + (seed / 23.792173));
-    float random = seed * 9.01230387 + sin(x + y * seed) * cos(x * y + seed) * seed + x + x / y + seed * y - sin(seed - y);// ^ was producing artefacts
+    float random = seed * 9.01230387 + sin(x + y * seed) * cos(x * y + seed) * seed + x + x / (y + seed) * y - sin(seed - y);// ^ was producing artefacts
     float2 ret;
     ret.x = (float)cos(random);
     ret.y = (float)sin(random);

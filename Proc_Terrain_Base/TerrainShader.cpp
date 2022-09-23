@@ -164,7 +164,7 @@ void TerrainShader::setShaderParameters(ID3D11DeviceContext* deviceContext, cons
 
 	/// Set shader texture resource in the pixel shader.
 	//for (int i = 1; i < 36; i++) {
-		deviceContext->PSSetShaderResources(0, 35, &textures[0]);
+		deviceContext->PSSetShaderResources(0, 17, &textures[0]);
 		//deviceContext->VSSetShaderResources(0, i, &textures[0]);// ideally just heightmaps
 	//}
 

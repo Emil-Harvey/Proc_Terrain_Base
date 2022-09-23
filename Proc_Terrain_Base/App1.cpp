@@ -60,7 +60,7 @@ void App1::init(HINSTANCE hinstance, HWND hwnd, int screenWidth, int screenHeigh
 	cloudShader = new CloudShader(renderer->getDevice(), hwnd);
 
 	// initialise RT objects. 
-	preDOFRT = new RenderTexture(renderer->getDevice(), screenWidth, screenHeight, /*400,300,*/ 0.1f, 100.f);
+	preDOFRT = new RenderTexture(renderer->getDevice(), screenWidth, screenHeight, /*400,300,*/ 0.1f, 10.f);
 	cameraDepth = new ShadowMap(renderer->getDevice(), screenWidth, screenHeight);
 
 	m_Terrain = new TessellationPlane(renderer->getDevice(), renderer->getDeviceContext(), terrainResolution);
@@ -75,6 +75,8 @@ void App1::init(HINSTANCE hinstance, HWND hwnd, int screenWidth, int screenHeigh
 	vars.LODfar = 23;//
 	vars.Scale = 7;
 	vars.PlanetDiameter = 127420;// a 1/1000th of earth
+	vars.TessellationFactor = 5;
+	vars.TimeOfYear = 54.0;
 
 	// Initialise light
 	light = new Light();
@@ -273,10 +275,12 @@ void App1::depthPass()
 	}*/
 
 	/// neighbouring terrains
-	float xMeshOffset;
-	float zMeshOffset;
+	float xMeshOffset = xz_TerrainMeshOffset * 3;
+	float zMeshOffset = xz_TerrainMeshOffset * 3;
+	float x2MeshOffset= xz_TerrainMeshOffset * -1;
+	float z2MeshOffset= xz_TerrainMeshOffset * -1;
 	//const int chunk = 1920;
-	if (camera->getPosition().x < 0/*fmod(camera->getRotation().y, 360) >= 180 || fmod(camera->getRotation().y, 360) < -180*/)// negative x (west)
+	/*if (camera->getPosition().x < 0)// negative x (west)
 	{
 		xMeshOffset = xz_TerrainMeshOffset * 3;
 	}
@@ -289,10 +293,12 @@ void App1::depthPass()
 	}
 	else {// north
 		zMeshOffset = xz_TerrainMeshOffset * -1;
-	}
+	}*/
 	const XMMATRIX xPositionMatrix = XMMatrixTranslation(xMeshOffset, 0.0, xz_TerrainMeshOffset);// 
 	const XMMATRIX zPositionMatrix = XMMatrixTranslation(xz_TerrainMeshOffset, 0.0, zMeshOffset);// 
 	const XMMATRIX xzPositionMatrix = XMMatrixTranslation(xMeshOffset, 0.0, zMeshOffset);
+
+	
 
 	XMMATRIX neighbourWorldMatrix;
 
@@ -311,8 +317,8 @@ void App1::depthPass()
 	xz_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
 	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csLand->getSRV());//XMFLOAT4(tessellationFactor, height * 100, LODnear, LODfar), scale, XMFLOAT2(xOffset, yOffset), timeOfYear);
 	terrainShader->render(renderer->getDeviceContext(), xz_Terrain->getIndexCount());
-
-
+	
+	
 
 	// Set back buffer as render target and reset view port.
 	renderer->setBackBufferRenderTarget();
@@ -369,7 +375,7 @@ void App1::firstPass()
 
 	///*// test sphere -- SUN
 	sphere->sendData(renderer->getDeviceContext());//						  	
-	XMMATRIX testTranslation = XMMatrixTranslation(-1000 * sin(time / 3.81), 1000* sunAltitude, 1000 * -sin((time / 3.81) + 1.78) / (1.75 + sin(timeOfYear / 57.29577)));//XMMatrixTranslation(testPosition.x, testPosition.y, testPosition.z);	
+	XMMATRIX testTranslation = XMMatrixTranslation(-1000 * sin(time / 3.81), 1000* sunAltitude, 1000 * -sin((time / 3.81) + 1.78) / (1.75 + sin(vars.TimeOfYear / 57.29577)));//XMMatrixTranslation(testPosition.x, testPosition.y, testPosition.z);	
 	testTranslation = XMMatrixMultiply(testTranslation, XMMatrixTranslation(camera->getPosition().x, camera->getPosition().y, camera->getPosition().z));
 	sunShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(XMMatrixMultiply(worldMatrix, XMMatrixScaling(10, 10, 10)), testTranslation), viewMatrix, projectionMatrix, mapTexture->getShaderResourceView());// light, camera, terrains[0]->GetChunkPosition(), scale, timeOfYear);
 	sunShader->render(renderer->getDeviceContext(), sphere->getIndexCount());
@@ -385,50 +391,44 @@ void App1::firstPass()
 
 	
 	/// neighbouring terrains
-	float xMeshOffset;//XMMATRIX xPositionMatrix;
-	float zMeshOffset;//XMMATRIX zPositionMatrix;
+	//float xMeshOffset = xz_TerrainMeshOffset * 3;//XMMATRIX xPositionMatrix;
+	//float zMeshOffset = xz_TerrainMeshOffset * 3;//XMMATRIX zPositionMatrix;
+	
 	const int chunk = 1920;
-	if (camera->getPosition().x < 0/*fmod(camera->getRotation().y, 360) >= 180 || fmod(camera->getRotation().y, 360) < -180*/)// negative x (west)
+
+	if (camera->getPosition().x < -chunk) /// if player moves to chunk border, reset position (relative to chunk) & update global offset (not seed) - illusion of seamless movement
 	{
-		xMeshOffset = xz_TerrainMeshOffset * 3;
-		if (camera->getPosition().x < -chunk) {/// if player moves to chunk border, reset position (relative to chunk) & update global offset (not seed) - illusion of seamless movement
-			vars.GlobalPosition.x -= chunk;
-			camera->setPosition(camera->getPosition().x + chunk, camera->getPosition().y, camera->getPosition().z);//	  reset player to center of mesh (originally planned to set to opposite edge of mesh)
-
-			renderMinimap();// regenerate terrain
-		}
-	}
-	else {// east
-		xMeshOffset = xz_TerrainMeshOffset * -1;
-		if (camera->getPosition().x > chunk) {
-			vars.GlobalPosition.x += chunk;
-			camera->setPosition(camera->getPosition().x - chunk, camera->getPosition().y, camera->getPosition().z);
-
-			renderMinimap();
-		}
-	}
-	if (camera->getPosition().z < 0)// negative z (south)
+		vars.GlobalPosition.x -= chunk;
+		camera->setPosition(camera->getPosition().x + chunk, camera->getPosition().y, camera->getPosition().z);//	  reset player to center of mesh (originally planned to set to opposite edge of mesh)
+		renderMinimap();// regenerate terrain
+	}	
+	else if (camera->getPosition().x > chunk)
 	{
-		zMeshOffset = xz_TerrainMeshOffset * 3;
-		if (camera->getPosition().z < -chunk) {
-			vars.GlobalPosition.y -= chunk;
-			camera->setPosition(camera->getPosition().x, camera->getPosition().y, camera->getPosition().z + chunk);
-
-			renderMinimap();
-		}
+		vars.GlobalPosition.x += chunk;
+		camera->setPosition(camera->getPosition().x - chunk, camera->getPosition().y, camera->getPosition().z);
+		renderMinimap();
 	}
-	else {// north
-		zMeshOffset = xz_TerrainMeshOffset * -1;
-		if (camera->getPosition().z > chunk) {
-			vars.GlobalPosition.y += chunk;
-			camera->setPosition(camera->getPosition().x, camera->getPosition().y, camera->getPosition().z - chunk);
-
-			renderMinimap();
-		}
+	
+	if (camera->getPosition().z < -chunk) // negative z (south)
+	{
+		vars.GlobalPosition.y -= chunk;
+		camera->setPosition(camera->getPosition().x, camera->getPosition().y, camera->getPosition().z + chunk);
+		renderMinimap();
+	}	
+	else if (camera->getPosition().z > chunk) // north
+	{
+		vars.GlobalPosition.y += chunk;
+		camera->setPosition(camera->getPosition().x, camera->getPosition().y, camera->getPosition().z - chunk);
+		renderMinimap();
 	}
-	const XMMATRIX xPositionMatrix = XMMatrixTranslation(xMeshOffset, 0.0, xz_TerrainMeshOffset);// 
-	const XMMATRIX zPositionMatrix = XMMatrixTranslation(xz_TerrainMeshOffset, 0.0, zMeshOffset);// 
-	const XMMATRIX xzPositionMatrix = XMMatrixTranslation(xMeshOffset, 0.0, zMeshOffset);
+	
+	const XMMATRIX xPositionMatrix = XMMatrixTranslation(xz_TerrainMeshOffset * 3, 0.0, xz_TerrainMeshOffset);// 
+	const XMMATRIX zPositionMatrix = XMMatrixTranslation(xz_TerrainMeshOffset, 0.0, xz_TerrainMeshOffset * 3);// 
+	const XMMATRIX xzPositionMatrix = XMMatrixTranslation(xz_TerrainMeshOffset * 3, 0.0, xz_TerrainMeshOffset * 3);
+
+	const XMMATRIX x2PositionMatrix = XMMatrixTranslation(-xz_TerrainMeshOffset, 0.0, xz_TerrainMeshOffset);// 
+	const XMMATRIX z2PositionMatrix = XMMatrixTranslation(xz_TerrainMeshOffset, 0.0, -xz_TerrainMeshOffset);// 
+	const XMMATRIX xz2PositionMatrix = XMMatrixTranslation(-xz_TerrainMeshOffset, 0.0, -xz_TerrainMeshOffset);
 
 	XMMATRIX neighbourWorldMatrix;
 
@@ -446,6 +446,22 @@ void App1::firstPass()
 	neighbourWorldMatrix = XMMatrixMultiply(worldMatrix, XMMatrixMultiply(terrainScaleMatrix, xzPositionMatrix));
 	xz_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
 	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csLand->getSRV());//XMFLOAT4(tessellationFactor, height * 100, LODnear, LODfar), scale, XMFLOAT2(xOffset, yOffset), timeOfYear);
+	terrainShader->render(renderer->getDeviceContext(), xz_Terrain->getIndexCount());
+
+	// X2 TERRAIN
+	neighbourWorldMatrix = XMMatrixMultiply(worldMatrix, XMMatrixMultiply(terrainScaleMatrix, x2PositionMatrix));
+	x_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
+	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csLand->getSRV());
+	terrainShader->render(renderer->getDeviceContext(), x_Terrain->getIndexCount());
+	// Z2 TERRAIN
+	neighbourWorldMatrix = XMMatrixMultiply(worldMatrix, XMMatrixMultiply(terrainScaleMatrix, z2PositionMatrix));
+	z_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
+	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csLand->getSRV());
+	terrainShader->render(renderer->getDeviceContext(), z_Terrain->getIndexCount());
+	// XZ2 TERRAIN
+	neighbourWorldMatrix = XMMatrixMultiply(worldMatrix, XMMatrixMultiply(terrainScaleMatrix, xz2PositionMatrix));
+	xz_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
+	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csLand->getSRV());
 	terrainShader->render(renderer->getDeviceContext(), xz_Terrain->getIndexCount());
 
 	/*			Back Face Culling
@@ -565,14 +581,14 @@ void App1::gui()
 		if (ImGui::Button("16")) 
 			terrainResolution = 16;
 
-		ImGui::Text("\nHigher scale magnifies the terrain");
-		ImGui::SliderFloat("##Scale", &vars.Scale, 0.01, 50, "Scale: %.4f", 2.5f);
-		
 		ImGui::Text("Pre-generation vertical offset");
 		ImGui::SliderFloat("##height", &vars.Amplitude, -20, 20, "Height: %.4f", 2.5f);
 
 		ImGui::SliderInt("##Octaves", &octaves, 1, 16, "%d Octaves");
 	}
+	ImGui::Text("\nHigher scale magnifies the terrain");
+	ImGui::SliderFloat("##Scale", &vars.Scale, 0.01, 50, "Scale: %.4f", 2.5f);
+
 		ImGui::Text("Seed:");
 		ImGui::SliderFloat("##x", &vars.seed.x, 0, 980000, "X Offset: %.2f");
 		ImGui::SliderFloat("##y", &vars.seed.y, 0, 980000, "Y Offset: %.2f");		
@@ -601,58 +617,7 @@ void App1::gui()
 	ImGui::SliderFloat("##latitude", &vars.GlobalPosition.y, -2.0*vars.PlanetDiameter, 2.0*vars.PlanetDiameter, "Latitude: %.2f", 3.0f);
 	ImGui::SliderFloat("##Planetdiameter", &vars.PlanetDiameter, 50, 90000, "Planet Diameter: %.2f", 5.0f);
 
-	//if (ImGui::CollapsingHeader("Terrain Functions##")) {
-	//	if (ImGui::Button("Flatten Terrain")) {
-	//		if (terrainResolution != terrains[0]->GetResolution()) {
-	//			terrains[0]->Resize(terrainResolution);
-	//		}
-	//		for (int i = 0; i < chunks; i++) {
-	//			terrains[i]->Regenerate(renderer->getDevice(), renderer->getDeviceContext(), true);
-	//		}
-	//	}
-	//	
-	//	
-	//	if (ImGui::Button("Proper Smooth")) {// average height across neighbours
-	//		for (int i = 0; i < chunks; i++) {
-	//			terrains[i]->Smooth();
-	//			terrains[i]->Regenerate(renderer->getDevice(), renderer->getDeviceContext(), false);
-	//		}
-	//	}
-	//	if (ImGui::Button("Fault Terrain")) {
-	//		terrains[0]->Fault();
-	//		terrains[0]->Regenerate(renderer->getDevice(), renderer->getDeviceContext(), false);
-	//	}
-	//	if (ImGui::Button("Midpoint Generation")) {
-	//		terrains[0]->MidpointHeightMap(8);
-	//		terrains[0]->Regenerate(renderer->getDevice(), renderer->getDeviceContext(), false);
-	//	}
-	//}
-	//ImGui::Begin("Erosion");
-	//	if (ImGui::Button("Hydraulic Erosion")) {
-	//		terrains[0]->HydraulicErosion(erosionRate);
-	//		terrains[0]->Regenerate(renderer->getDevice(), renderer->getDeviceContext(), false);
-	//	}
-	//	ImGui::SliderFloat("Erosion rate", &erosionRate, 0.01, 2.0);
-	//	ImGui::SliderInt("##Particle Erosion Radius", &erosionRadius, 4, 36, "Particle Erosion Radius: %d");
-	//	ImGui::SameLine();
-	//	if (ImGui::Button("Apply Radius")) {
-	//		terrains[0]->initRadialEffect(erosionRadius);
-	//	}
-	//
-	//	ImGui::VSliderFloat("Mt. Point##mp", ImVec2(40, 100), &mountainPoint, 10.0, 80.0, "%.1f");
-	//	ImGui::SameLine();
-	//	ImGui::VSliderFloat("Min##minsmooth", ImVec2(40, 100), &minReducedHeight, 0.0, maxIncreasedHeight, "%.1f%%");
-	//	ImGui::SameLine();
-	//	ImGui::VSliderFloat("Max##maxsmooth", ImVec2(40, 100), &maxIncreasedHeight, minReducedHeight, 300.0, "%.1f%%", 2.53f);
-	//	if (ImGui::Button("Quick Smooth")) {// divide height
-	//		for (int i = 0; i < chunks; i++) {
-	//			terrains[i]->perlinSmooth(mountainPoint, minReducedHeight/100.0, maxIncreasedHeight/100.0);
-	//			terrains[i]->Regenerate(renderer->getDevice(), renderer->getDeviceContext(), false);
-	//		}
-	//	}
-	//	ImGui::SameLine();
-	//	ImGui::Checkbox("Auto-smooth on generation", &autoSmooth);
-	//ImGui::End();
+	
 
 	ImGui::Begin("Tessellation options");
 		ImGui::SliderFloat("near threshold", &vars.LODnear, 0.0, vars.LODfar);
@@ -696,10 +661,7 @@ void App1::gui()
 	//ImGui::End();
 
 	ImGui::Begin("Time and Season options");/// TIME
-	//	ImGui::Text("sun");
-	//	ImGui::Text("R: %.2f", light->getDiffuseColour().x); //ImGui::SameLine();
-	//	ImGui::Text("G: %.2f", light->getDiffuseColour().y);
-	//	ImGui::Text("B: %.2f", light->getDiffuseColour().z);
+	
 		ImGui::Checkbox("Toggle Dynamic Time", &unpaused);
 		ImGui::SameLine();
 		ImGui::SliderFloat("##time", &time, 0.0, 24.00, "Time: %5.2f");
@@ -761,49 +723,49 @@ void App1::initTextures() {
 	//auto xzzj = textures;
 //*
 	textureMgr->loadTexture(L"rock_c", L"res/lofi textures/rock_/rock_c.png");
-	textureMgr->loadTexture(L"rock_h", L"res/nice textures/rock_/rock_h.png");
-	textureMgr->loadTexture(L"rock_n", L"res/nice textures/rock_/rock_n.png");
-	textureMgr->loadTexture(L"rock_s", L"res/nice textures/rock_/rock_s.png");
+	//textureMgr->loadTexture(L"rock_h", L"res/nice textures/rock_/rock_h.png");
+	textureMgr->loadTexture(L"rock_n", L"res/nice textures/rock_/rock_nh.png");
+	//textureMgr->loadTexture(L"rock_s", L"res/nice textures/rock_/rock_s.png");
 	//
-	textureMgr->loadTexture(L"snow_c", L"res/nice textures/snow_/snow_c.png");
-	textureMgr->loadTexture(L"snow_h", L"res/nice textures/snow_/snow_h.png");
-	textureMgr->loadTexture(L"snow_n", L"res/nice textures/snow_/snow_n.png");
-	textureMgr->loadTexture(L"snow_s", L"res/nice textures/snow_/snow_s.png");
+	textureMgr->loadTexture(L"snow_c", L"res/nice textures/snow_/snow_as.png");
+	//textureMgr->loadTexture(L"snow_h", L"res/nice textures/snow_/snow_h.png");
+	textureMgr->loadTexture(L"snow_n", L"res/nice textures/snow_/snow_nh.png");
+	//textureMgr->loadTexture(L"snow_s", L"res/nice textures/snow_/snow_s.png");
 	//
-	textureMgr->loadTexture(L"grass_c", L"res/nice textures/grass_/grass_c.png");
-	textureMgr->loadTexture(L"grass_h", L"res/nice textures/grass_/grass_h.png");
-	textureMgr->loadTexture(L"grass_n", L"res/nice textures/grass_/grass_n.png");
-	textureMgr->loadTexture(L"grass_s", L"res/nice textures/grass_/grass_s.png");
+	textureMgr->loadTexture(L"grass_c", L"res/nice textures/grass_/grass_as.png");
+	//textureMgr->loadTexture(L"grass_h", L"res/nice textures/grass_/grass_h.png");
+	textureMgr->loadTexture(L"grass_n", L"res/nice textures/grass_/grass_nh.png");
+	//textureMgr->loadTexture(L"grass_s", L"res/nice textures/grass_/grass_s.png");
 	//
-	textureMgr->loadTexture(L"stone_c", L"res/nice textures/stone_/stone_c.png");
-	textureMgr->loadTexture(L"stone_h", L"res/nice textures/stone_/stone_h.png");
-	textureMgr->loadTexture(L"stone_n", L"res/nice textures/stone_/stone_n.png");
-	textureMgr->loadTexture(L"stone_s", L"res/nice textures/stone_/stone_s.png");
+	textureMgr->loadTexture(L"stone_c", L"res/nice textures/stone_/stone_as.png");
+	//textureMgr->loadTexture(L"stone_h", L"res/nice textures/stone_/stone_h.png");
+	textureMgr->loadTexture(L"stone_n", L"res/nice textures/stone_/stone_nh.png");
+	//textureMgr->loadTexture(L"stone_s", L"res/nice textures/stone_/stone_s.png");
 	//
-	textureMgr->loadTexture(L"mulch_c", L"res/nice textures/mulch_/mulch_c.png");
-	textureMgr->loadTexture(L"mulch_h", L"res/nice textures/mulch_/mulch_h.png");
-	textureMgr->loadTexture(L"mulch_n", L"res/nice textures/mulch_/mulch_n.png");
-	textureMgr->loadTexture(L"mulch_s", L"res/nice textures/mulch_/mulch_s.png");
+	textureMgr->loadTexture(L"mulch_c", L"res/nice textures/mulch_/mulch_as.png");
+	//textureMgr->loadTexture(L"mulch_h", L"res/nice textures/mulch_/mulch_h.png");
+	textureMgr->loadTexture(L"mulch_n", L"res/nice textures/mulch_/mulch_nh.png");
+	//textureMgr->loadTexture(L"mulch_s", L"res/nice textures/mulch_/mulch_s.png");
 	//
-	textureMgr->loadTexture(L"sand_c", L"res/nice textures/sand_/sand_c.png");
-	textureMgr->loadTexture(L"sand_h", L"res/nice textures/sand_/sand_h.png");
-	textureMgr->loadTexture(L"sand_n", L"res/nice textures/sand_/sand_n.png");
-	textureMgr->loadTexture(L"sand_s", L"res/nice textures/sand_/sand_s.png");
+	textureMgr->loadTexture(L"sand_c", L"res/nice textures/sand_/sand_as.png");
+	//textureMgr->loadTexture(L"sand_h", L"res/nice textures/sand_/sand_h.png");
+	textureMgr->loadTexture(L"sand_n", L"res/nice textures/sand_/sand_nh.png");
+	//textureMgr->loadTexture(L"sand_s", L"res/nice textures/sand_/sand_s.png");
 	//
-	textureMgr->loadTexture(L"gravel_c", L"res/nice textures/gravel_/gravel_c.png");
-	textureMgr->loadTexture(L"gravel_h", L"res/nice textures/gravel_/gravel_h.png");
-	textureMgr->loadTexture(L"gravel_n", L"res/nice textures/gravel_/gravel_n.png");
-	textureMgr->loadTexture(L"gravel_s", L"res/nice textures/gravel_/gravel_s.png");
+	textureMgr->loadTexture(L"gravel_c", L"res/nice textures/gravel_/gravel_as.png");
+	//textureMgr->loadTexture(L"gravel_h", L"res/nice textures/gravel_/gravel_h.png");
+	textureMgr->loadTexture(L"gravel_n", L"res/nice textures/gravel_/gravel_nh.png");
+	//textureMgr->loadTexture(L"gravel_s", L"res/nice textures/gravel_/gravel_s.png");
 	//
 	textureMgr->loadTexture(L"water_c", L"res/nice textures/water_/water_c.png");
-	textureMgr->loadTexture(L"water_h", L"res/nice textures/water_/water_h.png");
+	//textureMgr->loadTexture(L"water_h", L"res/nice textures/water_/water_h.png");
 	textureMgr->loadTexture(L"water_n", L"res/nice textures/water_/water_n.png");
-	textureMgr->loadTexture(L"water_s", L"res/nice textures/water_/water_s.png");//
+	//textureMgr->loadTexture(L"water_s", L"res/nice textures/water_/water_s.png");//
 	//
-	textureMgr->loadTexture(L"savan_c", L"res/nice textures/savan_/savan_c.png");
-	textureMgr->loadTexture(L"savan_h", L"res/nice textures/savan_/savan_h.png");
-	textureMgr->loadTexture(L"savan_n", L"res/nice textures/savan_/savan_n.png");
-	textureMgr->loadTexture(L"savan_s", L"res/nice textures/savan_/savan_s.png");
+	textureMgr->loadTexture(L"savan_c", L"res/nice textures/savan_/savan_as.png");
+	//textureMgr->loadTexture(L"savan_h", L"res/nice textures/savan_/savan_h.png");
+	textureMgr->loadTexture(L"savan_n", L"res/nice textures/savan_/savan_nh.png");
+	//textureMgr->loadTexture(L"savan_s", L"res/nice textures/savan_/savan_s.png");
 //*/
 /*
 	for (int t = 0; t < 4; t++) { //		 does not work either
@@ -817,7 +779,7 @@ void App1::initTextures() {
 		}
 	}
 //*/
-	// albedo maps (c for colour)
+	// albedo/specular maps (c for colour)
 	textures[0] = textureMgr->getTexture(L"grass_c");
 	textures[1] = textureMgr->getTexture(L"stone_c");
 	textures[2] = textureMgr->getTexture(L"snow_c");
@@ -826,26 +788,27 @@ void App1::initTextures() {
 	textures[5] = textureMgr->getTexture(L"sand_c");
 	textures[6] = textureMgr->getTexture(L"mulch_c");
 	textures[7] = textureMgr->getTexture(L"gravel_c");
+	textures[8] = textureMgr->getTexture(L"savan_c");
 	
-	// height maps
-	textures[8] = textureMgr->getTexture(L"grass_h");
-	textures[9] = textureMgr->getTexture(L"stone_h");
-	textures[10] = textureMgr->getTexture(L"snow_h");
-	textures[11] = textureMgr->getTexture(L"rock_h");
-	textures[12] = textureMgr->getTexture(L"water_h");
-	textures[13] = textureMgr->getTexture(L"sand_h");
-	textures[14] = textureMgr->getTexture(L"mulch_h");
-	textures[15] = textureMgr->getTexture(L"gravel_h");
-	
-	//	normal maps
-	textures[16] = textureMgr->getTexture(L"grass_n");
-	textures[17] = textureMgr->getTexture(L"stone_n");
-	textures[18] = textureMgr->getTexture(L"snow_n");
-	textures[19] = textureMgr->getTexture(L"rock_n");
-	textures[20] = textureMgr->getTexture(L"water_n");
-	textures[21] = textureMgr->getTexture(L"sand_n");
-	textures[22] = textureMgr->getTexture(L"mulch_n");
-	textures[23] = textureMgr->getTexture(L"gravel_n");
+	// normal/height maps
+	textures[9] = textureMgr->getTexture(L"grass_n");
+	textures[10] = textureMgr->getTexture(L"stone_n");
+	textures[11] = textureMgr->getTexture(L"snow_n");
+	textures[12] = textureMgr->getTexture(L"rock_n");
+	textures[13] = textureMgr->getTexture(L"water_n");
+	textures[14] = textureMgr->getTexture(L"sand_n");
+	textures[15] = textureMgr->getTexture(L"mulch_n");
+	textures[16] = textureMgr->getTexture(L"gravel_n");
+	textures[17] = textureMgr->getTexture(L"savan_n");
+	/*//	normal maps
+	textures[16]  = textureMgr->getTexture(L"grass_h");
+	textures[17]  = textureMgr->getTexture(L"stone_h");
+	textures[18] = textureMgr->getTexture(L"snow_h");
+	textures[19] = textureMgr->getTexture(L"rock_h");
+	textures[20]  = textureMgr->getTexture(L"water_h");
+	textures[21] = textureMgr->getTexture(L"sand_h");
+	textures[22]  = textureMgr->getTexture(L"mulch_h");
+	textures[23] = textureMgr->getTexture(L"gravel_h");
 	
 	//	specular maps
 	textures[24] = textureMgr->getTexture(L"grass_s");
@@ -856,11 +819,11 @@ void App1::initTextures() {
 	textures[29] = textureMgr->getTexture(L"sand_s");
 	textures[30] = textureMgr->getTexture(L"mulch_s");
 	textures[31] = textureMgr->getTexture(L"gravel_s");
+	*/
 	
-	textures[32] = textureMgr->getTexture(L"savan_c");
-	textures[33] = textureMgr->getTexture(L"savan_h");
-	textures[34] = textureMgr->getTexture(L"savan_n");
-	textures[35] = textureMgr->getTexture(L"savan_s");
+	//textures[33] = textureMgr->getTexture(L"savan_h");
+	
+	//textures[35] = textureMgr->getTexture(L"savan_s");
 
 	// flora	(use "oak2.png" etc for low res textures)								
 	textureMgr->loadTexture(L"grass",			  L"res/flora/grass.png");

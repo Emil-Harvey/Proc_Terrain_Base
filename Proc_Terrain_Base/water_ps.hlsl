@@ -67,14 +67,20 @@ float3 calculateNormals(float2 pos)//,float h = 1.0 / 200.0f)
 
 float4 main(InputType input) : SV_TARGET
 {
+
+    float dist = length(input.world_position.xyz - viewpos.xyz);// nice little dither fade of render distance
+    const float clip_near = 3000.0;
+    const float fade_dist = 1500.0;
+    clip(dist > clip_near ? ((clip_near + fade_dist - dist) / fade_dist) + (((input.position.x % 2.5) - 1.25) * ((input.position.y % 2.5) - 1.25)) : 1);
+
     float2 uv = input.tex;
-    const float altitude = input.world_position.y;
-    const float latitude = input.world_position.z;
-    const float longditude = input.world_position.x;
-    const float slope = input.normal.y;
+    //const float altitude = input.world_position.y;
+    //const float latitude = input.world_position.z;
+   // const float longditude = input.world_position.x;
+   // const float slope = input.normal.y;
     
     //MaterialSample currentMat;
-    float4 textureHeight = 0;
+    //float4 textureHeight = 0;
     float4 textureColour = 0;
     float3 textureNormal = 0;
     float4 textureShine = 0;

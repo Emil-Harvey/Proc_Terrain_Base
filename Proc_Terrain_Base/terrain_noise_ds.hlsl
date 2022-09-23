@@ -205,7 +205,7 @@ OutputType main(ConstantOutputType input, float2 uvwCoord : SV_DomainLocation, c
     output.steepness = saturate(pow(saturate(slope) + 0.18 + (0.12 * bfm(scale * seedc.xz / (scale * 12), 4)), 10));
 
     if (output.steepness < 0.016 && octaves > 6){// add real roughness to steep slopes
-        output.world_position.xyz += (1- output.steepness) * 4.8 * scale * output.normal * perlin(seedc.xz / (scale * 800.1171));
+        output.world_position.xyz += (1- output.steepness) * 4.8 * log(scale-1.0) * output.normal * perlin(seedc.xz / (scale * 800.1171));
         if (octaves > 9) {
             output.world_position.xyz += 0.592 * scale * output.normal * perlin(seedc.xz / (scale * 1.1171));
         }
