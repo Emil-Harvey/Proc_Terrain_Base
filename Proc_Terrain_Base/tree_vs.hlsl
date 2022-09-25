@@ -84,8 +84,9 @@ OutputType main(InputType input)
     output.worldPosition.z = int(output.worldPosition.z / alignment) * alignment;
 
     float jitter_radius = alignment * (3.0 / 5.0);// try to hide the grid-alignment look on generated foliage
-    float2 jitter = { noise(output.worldPosition.xz + float2(0.4115,0.31271)) * jitter_radius, noise(output.worldPosition.zx + float2(0.4115,0.31271)) * jitter_radius };
-    output.worldPosition.xz += jitter;
+    float2 jitter = { noise(abs(output.worldPosition.xz) + float2(0.4115,0.31271)) * jitter_radius, noise(abs(output.worldPosition.xz) + float2(0.4115,0.31271)) * jitter_radius };
+    output.worldPosition.x += jitter.x;
+    output.worldPosition.z += jitter.y;
     
     float4 heightmapSampled = HEIGHT.SampleLevel(s0, (output.worldPosition.xz / 11520.0) + 0.5, 0);
     output.worldPosition.y = heightmapSampled.a;

@@ -48,9 +48,9 @@ struct OutputType
 {
     float4 position : SV_POSITION;
     float4 world_position : POSITION;
-    float2 texX : TEXCOORD0;
-    float2 texY : TEXCOORD1;
-    float2 texZ : TEXCOORD2;
+    noperspective float2 texX : TEXCOORD0;
+    noperspective float2 texY : TEXCOORD1;
+    noperspective float2 texZ : TEXCOORD2;
     float3 blendweights : NORMAL0;
     float3 normal : NORMAL1;
 
@@ -238,7 +238,7 @@ OutputType main(ConstantOutputType input, float2 uvwCoord : SV_DomainLocation, c
         + 3.25*(cos(time / PI180) * -sin(latitude * 0.5))) )//      <----- needs work
         * scale;
     // this represents temperature/climate, specifically how cold
-    output.snowness = saturate(0.5 / scale * (0.2 * altitude - 3.1181*bfm(seedc.xz / (scale * 20), 4) - snowline));
+    output.snowness = pow(saturate(0.5 / scale * (0.2 * altitude - 7.1181*bfm(seedc.xz / (scale * 20), 3) - snowline)), 3.0 );
     //  apply deep snow effect on flat ground (raise vertices)
     output.world_position.y += max(output.snowness * output.steepness - 0.5, 0) * scale;
 

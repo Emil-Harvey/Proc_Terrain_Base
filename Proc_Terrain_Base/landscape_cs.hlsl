@@ -68,7 +68,7 @@ float NoiseTexture(float2 coords, float scale,int octs, float roughness,float di
     for (int o = 0; o < octs; o++)
     {
         int freqMultiplier = 4;//1.125;// default = 2
-        float h = perlin(scale * d_coords * pow(4, o)) / pow(2.0 , o);//-saturate(roughness)
+        float h = perlin(scale * d_coords * pow(4, o)) * pow(saturate(roughness) , o);//
         //h *= h;
         //h *= weight;
         //weight = h;
@@ -116,25 +116,25 @@ float get_alt_terrain_height(float2 input, float octaves) // a revised terrain a
 {
     float height = 0;
     float2 alt_input = input + float2(55.4, 35.1);
-    float scale_coeff = scale * 1000.0;
+    float scale_coeff = scale * 100.0;
 
     // to start, get some noise that will be used to vary how rough the noises are and much they are distorted.
-    float roughness_noise = saturate(0.5+0.6 * NoiseTexture(input, 0.16/ scale_coeff, 5, 0.5, 0.5));//bfm(input / scale_coeff,15 );//
-    float distortion_noise = saturate(0.5 + 0.6 * NoiseTexture(alt_input, 0.16 / scale_coeff, 1, 0.5, 0.5));
+    float roughness_noise = saturate(0.4+0.4 * NoiseTexture(input, 0.16/ scale_coeff, 5, 0.5, 0.5));//bfm(input / scale_coeff,15 );//
+    float distortion_noise = saturate(0.5 + 0.6 * NoiseTexture(alt_input, 0.16 / scale_coeff, 5, 0.5, 0.5));
 
-    float mountain_noise = 1.3-2.0*abs(NoiseTexture(input, 3.6 / scale_coeff, 5, roughness_noise, 1.0+distortion_noise));
-    float valley_noise = abs(NoiseTexture(alt_input, 3.6 / scale_coeff, 4, roughness_noise, 1.0 + distortion_noise));
+    float mountain_noise = 1.3-2.0*abs(NoiseTexture(input, 3.6 / scale_coeff, 9, roughness_noise, 1.0+ 5.0 * distortion_noise));
+    float valley_noise = abs(NoiseTexture(alt_input, 3.6 / scale_coeff, 9, roughness_noise, 1.0 +5.0* distortion_noise));
 
     height = mountain_noise * valley_noise;//
     
-    float macro_vary_noise = NoiseTexture(alt_input, 0.66 / scale_coeff, 5, roughness_noise, distortion_noise);
+    float macro_vary_noise = NoiseTexture(alt_input, 0.66 / scale_coeff, 7, roughness_noise, distortion_noise);
 
     height = /*smooth*/max(macro_vary_noise + height, macro_vary_noise * height);
 
     // APPLY SCALING/SMOOTHING (inv sm. step)...
     // make sure height is centred on 0
 
-    float subcontinent_noise = NoiseTexture(input, 0.6 / scale_coeff, octaves, 0.9589, min(distortion_noise,0.7));
+    float subcontinent_noise = NoiseTexture(input, 0.6 / scale_coeff, 6, 0.59589, min(distortion_noise,0.7));
 
     height *= 59.8 * scale;
     subcontinent_noise *= 53.4 * scale;
@@ -196,7 +196,7 @@ void main(int3 groupThreadID : SV_GroupThreadID,
     if (true || height <= 0)
         humidity = 99;// underwater, duh
     else {
-        float h_attenuation = 10.0 / 1.0; // how far humidity is carried from 'water sources' 
+        float h_attenuation = 100.0 / 1.0; // how far humidity is carried from 'water sources' 
         float positionOffset = 50;
         while (h_attenuation > 1) {//       this causes stress on the GPU? <- debug settings were enabled in properties
             

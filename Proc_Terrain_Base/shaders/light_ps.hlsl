@@ -138,9 +138,9 @@ struct InputType
 {
     float4 position : SV_POSITION;
     float4 world_position : POSITION;
-    float2 texX : TEXCOORD0;
-    float2 texY : TEXCOORD1;
-    float2 texZ : TEXCOORD2;
+    noperspective float2 texX : TEXCOORD0;
+    noperspective float2 texY : TEXCOORD1;
+    noperspective float2 texZ : TEXCOORD2;
     float3 blendweights : NORMAL0;
     float3 normal : NORMAL1;
 
@@ -383,8 +383,8 @@ float4 main(InputType input) : SV_TARGET
         }*/
         else {
             //  // ((rock or cliff,a,b) or (snow or ((sand or gravel,a,b) or (grass or grass2,a,b),a,b),a,b),a,b) 
-            currentMat = heightBlend( heightBlend(heightBlend(heightBlend(stone, sand, input.noise, uv), heightBlend(heightBlend(grass2, grass, input.noise2, uv), heightBlend(rock, savan, input.temperature / 22.4, uv), 1-aridness, uv), input.beachness, uv), snow, input.snowness, uv), cliff, 1- input.steepness, uv);
-            //heightBlend(rock, cliff, input.temperature, uv)
+            //currentMat = heightBlend( heightBlend(heightBlend(heightBlend(stone, sand, input.noise, uv), heightBlend(heightBlend(grass2, grass, input.noise2, uv), heightBlend(rock, savan, input.temperature / 22.4, uv), 1-aridness, uv), input.beachness, uv), snow, input.snowness, uv), cliff, 1- input.steepness, uv);
+            currentMat = heightBlend(rock, savan, input.temperature / 22.4, uv);
 
             textureColour = currentMat.albedo_specular; //float4(snowness, snowness, snowness, 1.0); //
             textureNormal = currentMat.normal_height;
@@ -462,12 +462,13 @@ float4 main(InputType input) : SV_TARGET
     //textureColour.r = input.humidity; //input.wind.x;//temperature / 36.6; //
     //textureColour.g = 0.0; //cos(input.temperature / 15); //snowness; //wind.x;//
     //textureColour.b = input.temperature / -37.0; //wind.y;//
-    float4 pixelColour = textureColour * (lightColour+ sunlight.ambient) + (sunlight.colour * textureColour.a * calculateSpecular(-sunlight.direction, input.normal, sunlight.colour, view));
+    float4 pixelColour = float4( textureColour.xyz * (lightColour.xyz + sunlight.ambient.xyz) + (sunlight.colour.xyz * textureColour.a * calculateSpecular(-sunlight.direction, input.normal , sunlight.colour, view)), 1.0);//+ textureNormal.xyz
     pixelColour.a = 1.0;
     //if (int((input.position.x + (timeOfYear * 20000 * input.windScreenDir))  ) % 67 == 0 && int(input.position.y - (timeOfYear * 50000))% 67 == 0)
     //    pixelColour.xy = 0.0; // snow
     
-   //Height Fog//    pixelColour = lerp(pixelColour, float4(0.435, 0.671, 0.6931, 1), saturate(log(length(viewpos.xz - input.world_position.xz) / (input.world_position.y))/10));
+   //Height Fog
+   //    pixelColour = lerp(pixelColour, float4(0.435, 0.671, 0.6931, 1), saturate(log(length(viewpos.xz - input.world_position.xz) / (input.world_position.y))/10));
 
     if ((input.world_position.z + globalPosition.y) / (planetDiameter * 3.14159265359) > 1.09 || (input.world_position.z + globalPosition.y) / (planetDiameter * 3.14159265359) < -1.09)
         pixelColour.g = 0.0;//   arctic circle
