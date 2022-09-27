@@ -38,6 +38,7 @@ bld/
 !*/x64/[Dd]ebug/
 */x64/[Dd]ebug/*.exe
 */x64/[Dd]ebug/*.cso
+*/x64/[Dd]ebug/[Ss]haders/*.cso
 !*/x64/[Rr]elease/
 */x64/[Rr]elease/*.exe
 */x64/[Rr]elease/*.cso

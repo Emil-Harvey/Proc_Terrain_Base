@@ -2,7 +2,7 @@
 
 TerrainShader::TerrainShader(ID3D11Device* device, HWND hwnd) : TessShader(device, hwnd)
 {
-	initShader(L"tess_vs.cso", L"tess_hs.cso", L"terrain_noise_ds.cso", L"tree_gs.cso", L"light_ps.cso");
+	initShader(L"shaders/tess_vs.cso", L"shaders/tess_hs.cso", L"shaders/terrain_noise_ds.cso", L"shaders/tree_gs.cso", L"shaders/light_ps.cso");
 }
 void TerrainShader::initShader(const wchar_t* vsFilename, const wchar_t* hsFilename, const wchar_t* dsFilename, const wchar_t* gsFilename, const wchar_t* psFilename)
 {
@@ -19,7 +19,7 @@ void TerrainShader::initShader(const wchar_t* vsFilename, const wchar_t* hsFilen
 
 	if (GeoShaderActive) {//<-- relevant?
 		//		Load the geo shader optionally
-		loadDomainShader(L"grass_ds.cso");
+		loadDomainShader(L"shaders/grass_ds.cso");
 		loadGeometryShader(gsFilename);
 	}
 	else {
@@ -39,7 +39,7 @@ void TerrainShader::initShader(const wchar_t* vsFilename, const wchar_t* hsFilen
 	renderer->CreateBuffer(&matrixBufferDesc, NULL, &matrixBuffer);
 
 	// Create a texture sampler state description.
-	samplerDesc.Filter = D3D11_FILTER_ANISOTROPIC;
+	samplerDesc.Filter = D3D11_FILTER_ANISOTROPIC; //D3D11_FILTER_MIN_MAG_MIP_POINT;//   breaks the heightmap sampler, if you want ps1 gfx, need 2 samplers
 	samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
 	samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
 	samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;

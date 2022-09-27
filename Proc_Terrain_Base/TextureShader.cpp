@@ -5,9 +5,9 @@
 TextureShader::TextureShader(ID3D11Device* device, HWND hwnd, bool textured) : BaseShader(device, hwnd)
 {
 	if (textured)
-		initShader(L"texture_vs.cso", L"texture_ps.cso");
+		initShader(L"shaders/texture_vs.cso", L"shaders/texture_ps.cso");
 	else
-		initShader(L"texture_vs.cso", L"sun_ps.cso");// sky / sun mode
+		initShader(L"shaders/texture_vs.cso", L"shaders/sun_ps.cso");// sky / sun mode
 }
 
 
@@ -102,15 +102,16 @@ void TextureShader::setShaderParameters(ID3D11DeviceContext* deviceContext, cons
 	tworld = XMMatrixTranspose(worldMatrix);
 	tview = XMMatrixTranspose(viewMatrix);
 	tproj = XMMatrixTranspose(projectionMatrix);
-	;
+	
 	// Send (ortho) matrix data
 	result = deviceContext->Map(matrixBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 	dataPtr = (MatrixBufferType*)mappedResource.pData;
 	dataPtr->world = tworld;// worldMatrix;
-	dataPtr->view = (t >= 0) ? XMMatrixIdentity() + XMMATRIX(XMVECTOR({ 0 }), XMVECTOR({ 0 }), XMVECTOR({ 0, 0, 0, 10.0 }), XMVECTOR({ 0 })) : tview;//tview;
+	dataPtr->view = tview;//(t >= 0) ? XMMatrixIdentity() + XMMATRIX(XMVECTOR({ 0 }), XMVECTOR({ 0 }), XMVECTOR({ 0, 0, 0, 10.0 }), XMVECTOR({ 0 })) : tview;//
 	dataPtr->projection = tproj;
 	deviceContext->Unmap(matrixBuffer, 0);
 	deviceContext->VSSetConstantBuffers(0, 1, &matrixBuffer);
+
 	// Send matrix data
 	result = deviceContext->Map(SECONDmatrixBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 	dataPtr = (MatrixBufferType*)mappedResource.pData;

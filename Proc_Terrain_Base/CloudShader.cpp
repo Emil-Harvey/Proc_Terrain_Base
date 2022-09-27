@@ -7,7 +7,7 @@ CloudShader::CloudShader(ID3D11Device* device, HWND hwnd) : TextureShader(device
 	//if (textured)
 	//	initShader(L"texture_vs.cso", L"texture_ps.cso");
 	//else
-	initShader(L"tess_vs.cso",L"cloud_gs.cso", L"texture_ps.cso");// 
+	initShader(L"shaders/tess_vs.cso",L"shaders/cloud_gs.cso", L"shaders/texture_ps.cso");// 
 }
 
 

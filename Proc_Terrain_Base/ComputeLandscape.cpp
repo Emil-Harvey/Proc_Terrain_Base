@@ -4,7 +4,7 @@ ComputeLandscape::ComputeLandscape(ID3D11Device* device, HWND hwnd, int w, int h
 {
 	sWidth = w;
 	sHeight = h;
-	initShader(L"landscape_cs.cso", NULL);
+	initShader(L"shaders/landscape_cs.cso", NULL);
 }
 
 ComputeLandscape::~ComputeLandscape()

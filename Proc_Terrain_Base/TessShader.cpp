@@ -4,7 +4,7 @@
 TessShader::TessShader(ID3D11Device* device, HWND hwnd, bool includeGeoShader) : LightShader(device, hwnd)
 {
 	GeoShaderActive = includeGeoShader;
-	initShader(L"tess_vs.cso", L"tess_hs.cso", L"water_ds.cso", L"tree_gs.cso", L"water_ps.cso");
+	initShader(L"shaders/tess_vs.cso", L"shaders/tess_hs.cso", L"shaders/water_ds.cso", L"shaders/tree_gs.cso", L"shaders/water_ps.cso");
 
 }
 
@@ -25,7 +25,7 @@ void TessShader::initShader(const wchar_t* vsFilename, const wchar_t* hsFilename
 		loadDomainShader(dsFilename);
 	}
 	else {//		Load the geo shader optionally
-		loadDomainShader(L"grass_ds.cso");
+		loadDomainShader(L"shaders/grass_ds.cso");
 		loadGeometryShader(gsFilename);
 	}
 

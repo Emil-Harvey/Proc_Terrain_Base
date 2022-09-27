@@ -3,7 +3,7 @@
 LightShader::LightShader(ID3D11Device* device, HWND hwnd) : BaseShader(device, hwnd)
 {
 	//sun? initShader(L"light_vs.cso", L"sun_ps.cso") : 
-		initShader(L"light_vs.cso", L"light_ps.cso");
+		initShader(L"shaders/light_vs.cso", L"shaders/light_ps.cso");
 }
 
 

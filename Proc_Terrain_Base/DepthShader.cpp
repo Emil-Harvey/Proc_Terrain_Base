@@ -3,7 +3,7 @@
 
 DepthShader::DepthShader(ID3D11Device* device, HWND hwnd) : BaseShader(device, hwnd)
 {
-	initShader(L"depth_vs.cso", L"depth_ps.cso");
+	initShader(L"shaders/depth_vs.cso", L"shaders/depth_ps.cso");
 }
 
 DepthShader::~DepthShader()

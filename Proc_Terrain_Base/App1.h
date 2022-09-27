@@ -46,7 +46,7 @@ protected:
 	}
 
 private:
-	LightShader* shader;
+	LightShader* defaultShader;
 	TextureShader* sunShader;
 	Grower* treeShader;
 	TessShader* waterShader;
@@ -71,7 +71,8 @@ private:
 	TessellationPlane* m_Water;
 	PlaneMesh* m_clouds;
 	int Water_Mesh_Res = 48;
-	SphereMesh* sphere;
+	SphereMesh* sun_mesh;
+	SphereMesh* sky_sphere;
 
 	Light* light;
 

@@ -4,7 +4,7 @@
 Grower::Grower(ID3D11Device* device, HWND hwnd) :
 	LightShader(device, hwnd)
 {
-	initShader(L"tree_vs.cso",L"tree_gs.cso", L"tree_ps.cso");
+	initShader(L"shaders/tree_vs.cso",L"shaders/tree_gs.cso", L"shaders/tree_ps.cso");
 }
 void Grower::initShader(const wchar_t* vsFilename, const wchar_t* gsFilename, const wchar_t* psFilename)
 {

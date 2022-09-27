@@ -3,7 +3,7 @@
 App1::App1()
 {
 	light = nullptr;
-	shader = nullptr;
+	defaultShader = nullptr;
 	m_Water = nullptr;
 	treeShader = nullptr;
 	waterShader = nullptr;
@@ -39,10 +39,11 @@ void App1::init(HINSTANCE hinstance, HWND hwnd, int screenWidth, int screenHeigh
 	//terrains[0]->initRadialEffect(erosionRadius);
 	
 	m_Water = new TessellationPlane(renderer->getDevice(), renderer->getDeviceContext(), Water_Mesh_Res);
-	sphere = new SphereMesh(renderer->getDevice(), renderer->getDeviceContext(), 10);
+	sun_mesh = new SphereMesh(renderer->getDevice(), renderer->getDeviceContext(), 10);
+	sky_sphere = new SphereMesh(renderer->getDevice(), renderer->getDeviceContext(), 8);
 
 	// Load and initialise required shader handle objects.
-	shader = new LightShader(renderer->getDevice(), hwnd);// may be defunct
+	defaultShader = new LightShader(renderer->getDevice(), hwnd);// may be defunct
 	sunShader = new TextureShader(renderer->getDevice(), hwnd, false);
 	treeShader = new Grower(renderer->getDevice(), hwnd);
 	waterShader = new TessShader(renderer->getDevice(), hwnd);
@@ -60,7 +61,7 @@ void App1::init(HINSTANCE hinstance, HWND hwnd, int screenWidth, int screenHeigh
 	cloudShader = new CloudShader(renderer->getDevice(), hwnd);
 
 	// initialise RT objects. 
-	preDOFRT = new RenderTexture(renderer->getDevice(), screenWidth, screenHeight, /*400,300,*/ 0.1f, 10.f);
+	preDOFRT = new RenderTexture(renderer->getDevice(), screenWidth, screenHeight, /*400,300,*/ 0.1f, 1000.f);
 	cameraDepth = new ShadowMap(renderer->getDevice(), screenWidth, screenHeight);
 
 	m_Terrain = new TessellationPlane(renderer->getDevice(), renderer->getDeviceContext(), terrainResolution);
@@ -122,11 +123,21 @@ App1::~App1()
 		delete m_Terrain;
 		m_Terrain = 0;
 	}
-
-	if (shader)
+	if (sun_mesh)
 	{
-		delete shader;
-		shader = 0;
+		delete sun_mesh;
+		sun_mesh = 0;
+	}
+	if (sky_sphere)
+	{
+		delete sky_sphere;
+		sky_sphere = 0;
+	}
+
+	if (defaultShader)
+	{
+		delete defaultShader;
+		defaultShader = 0;
 	}
 	if (sunShader)
 	{
@@ -242,91 +253,91 @@ bool App1::renderMinimap()
 	
 	return true;
 }
-
-void App1::depthPass()
-{	/// OPTIMISE: move duplicate variables to render() function
-
-	cameraDepth->BindDsvAndSetNullRenderTarget(renderer->getDeviceContext());
-
-	
-	XMMATRIX worldMatrix, viewMatrix, projectionMatrix;
-	const XMMATRIX positionMatrix = XMMatrixTranslation(xz_TerrainMeshOffset, 0.0, xz_TerrainMeshOffset);
-	 
-	// Get the world, view, projection, and ortho matrices from the camera and Direct3D objects.
-	worldMatrix = renderer->getWorldMatrix();
-	viewMatrix = camera->getViewMatrix();
-	projectionMatrix = (renderLODchunks ? renderer->getOrthoMatrix() : renderer->getProjectionMatrix());// renderer->getOrthoMatrix();//getProjectionMatrix();//
-
-	static const XMMATRIX terrainScaleMatrix = XMMatrixScaling(256, 1.0, 256);// 4096.0 / terrainResolution // 4096 may be incorrect, it may also be x^2 or something
-	const XMMATRIX m_TerrainMatrix = XMMatrixMultiply(terrainScaleMatrix, positionMatrix);
-
-	/// main terrain
-	m_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);//													
-	terrainShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(worldMatrix, m_TerrainMatrix), viewMatrix, projectionMatrix, textures, light, camera, &vars, /*verBlur->getSRV()*/csLand->getSRV());// XMFLOAT4(tessellationFactor, height * 100, LODnear, LODfar), scale, XMFLOAT2(xOffset, yOffset), timeOfYear);
-	terrainShader->render(renderer->getDeviceContext(), m_Terrain->getIndexCount());
-
-	/* foliage (geo shader)
-	if (floraOn) {
-		//renderer->setAlphaBlending(true);
-		f_Terrain->sendData(renderer->getDeviceContext());//worldMatrix//m_TerrainMatrix)
-		treeShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(worldMatrix, XMMatrixMultiply(XMMatrixScaling(5, 1.0, 5), XMMatrixTranslation(int(camera->getPosition().x) - 700.0, 0, int(camera->getPosition().z) - 700.0))), viewMatrix, projectionMatrix, trees, light, camera, &vars, csLand->getSRV());
-		treeShader->render(renderer->getDeviceContext(), f_Terrain->getIndexCount());
-		//renderer->setAlphaBlending(false);
-	}*/
-
-	/// neighbouring terrains
-	float xMeshOffset = xz_TerrainMeshOffset * 3;
-	float zMeshOffset = xz_TerrainMeshOffset * 3;
-	float x2MeshOffset= xz_TerrainMeshOffset * -1;
-	float z2MeshOffset= xz_TerrainMeshOffset * -1;
-	//const int chunk = 1920;
-	/*if (camera->getPosition().x < 0)// negative x (west)
-	{
-		xMeshOffset = xz_TerrainMeshOffset * 3;
-	}
-	else {// east
-		xMeshOffset = xz_TerrainMeshOffset * -1;
-	}
-	if (camera->getPosition().z < 0)// negative z (south)
-	{
-		zMeshOffset = xz_TerrainMeshOffset * 3;
-	}
-	else {// north
-		zMeshOffset = xz_TerrainMeshOffset * -1;
-	}*/
-	const XMMATRIX xPositionMatrix = XMMatrixTranslation(xMeshOffset, 0.0, xz_TerrainMeshOffset);// 
-	const XMMATRIX zPositionMatrix = XMMatrixTranslation(xz_TerrainMeshOffset, 0.0, zMeshOffset);// 
-	const XMMATRIX xzPositionMatrix = XMMatrixTranslation(xMeshOffset, 0.0, zMeshOffset);
-
-	
-
-	XMMATRIX neighbourWorldMatrix;
-
-	// X TERRAIN
-	neighbourWorldMatrix = XMMatrixMultiply(worldMatrix, XMMatrixMultiply(terrainScaleMatrix, xPositionMatrix));
-	x_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
-	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csLand->getSRV());
-	terrainShader->render(renderer->getDeviceContext(), x_Terrain->getIndexCount());
-	// Z TERRAIN
-	neighbourWorldMatrix = XMMatrixMultiply(worldMatrix, XMMatrixMultiply(terrainScaleMatrix, zPositionMatrix));
-	z_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
-	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csLand->getSRV());
-	terrainShader->render(renderer->getDeviceContext(), z_Terrain->getIndexCount());
-	// XZ TERRAIN
-	neighbourWorldMatrix = XMMatrixMultiply(worldMatrix, XMMatrixMultiply(terrainScaleMatrix, xzPositionMatrix));
-	xz_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
-	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csLand->getSRV());//XMFLOAT4(tessellationFactor, height * 100, LODnear, LODfar), scale, XMFLOAT2(xOffset, yOffset), timeOfYear);
-	terrainShader->render(renderer->getDeviceContext(), xz_Terrain->getIndexCount());
-	
-	
-
-	// Set back buffer as render target and reset view port.
-	renderer->setBackBufferRenderTarget();
-	renderer->resetViewport();
-	
-
-}
-
+//
+//void App1::depthPass()
+//{	/// OPTIMISE: move duplicate variables to render() function
+//
+//	cameraDepth->BindDsvAndSetNullRenderTarget(renderer->getDeviceContext());
+//
+//	
+//	XMMATRIX worldMatrix, viewMatrix, projectionMatrix;
+//	const XMMATRIX positionMatrix = XMMatrixTranslation(xz_TerrainMeshOffset, 0.0, xz_TerrainMeshOffset);
+//	 
+//	// Get the world, view, projection, and ortho matrices from the camera and Direct3D objects.
+//	worldMatrix = renderer->getWorldMatrix();
+//	viewMatrix = camera->getViewMatrix();
+//	projectionMatrix = (renderLODchunks ? renderer->getOrthoMatrix() : renderer->getProjectionMatrix());// renderer->getOrthoMatrix();//getProjectionMatrix();//
+//
+//	static const XMMATRIX terrainScaleMatrix = XMMatrixScaling(256, 1.0, 256);// 4096.0 / terrainResolution // 4096 may be incorrect, it may also be x^2 or something
+//	const XMMATRIX m_TerrainMatrix = XMMatrixMultiply(terrainScaleMatrix, positionMatrix);
+//
+//	/// main terrain
+//	m_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);//													
+//	terrainShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(worldMatrix, m_TerrainMatrix), viewMatrix, projectionMatrix, textures, light, camera, &vars, /*verBlur->getSRV()*/csLand->getSRV());// XMFLOAT4(tessellationFactor, height * 100, LODnear, LODfar), scale, XMFLOAT2(xOffset, yOffset), timeOfYear);
+//	terrainShader->render(renderer->getDeviceContext(), m_Terrain->getIndexCount());
+//
+//	/* foliage (geo shader)
+//	if (floraOn) {
+//		//renderer->setAlphaBlending(true);
+//		f_Terrain->sendData(renderer->getDeviceContext());//worldMatrix//m_TerrainMatrix)
+//		treeShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(worldMatrix, XMMatrixMultiply(XMMatrixScaling(5, 1.0, 5), XMMatrixTranslation(int(camera->getPosition().x) - 700.0, 0, int(camera->getPosition().z) - 700.0))), viewMatrix, projectionMatrix, trees, light, camera, &vars, csLand->getSRV());
+//		treeShader->render(renderer->getDeviceContext(), f_Terrain->getIndexCount());
+//		//renderer->setAlphaBlending(false);
+//	}*/
+//
+//	/// neighbouring terrains
+//	float xMeshOffset = xz_TerrainMeshOffset * 3;
+//	float zMeshOffset = xz_TerrainMeshOffset * 3;
+//	float x2MeshOffset= xz_TerrainMeshOffset * -1;
+//	float z2MeshOffset= xz_TerrainMeshOffset * -1;
+//	//const int chunk = 1920;
+//	/*if (camera->getPosition().x < 0)// negative x (west)
+//	{
+//		xMeshOffset = xz_TerrainMeshOffset * 3;
+//	}
+//	else {// east
+//		xMeshOffset = xz_TerrainMeshOffset * -1;
+//	}
+//	if (camera->getPosition().z < 0)// negative z (south)
+//	{
+//		zMeshOffset = xz_TerrainMeshOffset * 3;
+//	}
+//	else {// north
+//		zMeshOffset = xz_TerrainMeshOffset * -1;
+//	}*/
+//	const XMMATRIX xPositionMatrix = XMMatrixTranslation(xMeshOffset, 0.0, xz_TerrainMeshOffset);// 
+//	const XMMATRIX zPositionMatrix = XMMatrixTranslation(xz_TerrainMeshOffset, 0.0, zMeshOffset);// 
+//	const XMMATRIX xzPositionMatrix = XMMatrixTranslation(xMeshOffset, 0.0, zMeshOffset);
+//
+//	
+//
+//	XMMATRIX neighbourWorldMatrix;
+//
+//	// X TERRAIN
+//	neighbourWorldMatrix = XMMatrixMultiply(worldMatrix, XMMatrixMultiply(terrainScaleMatrix, xPositionMatrix));
+//	x_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
+//	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csLand->getSRV());
+//	terrainShader->render(renderer->getDeviceContext(), x_Terrain->getIndexCount());
+//	// Z TERRAIN
+//	neighbourWorldMatrix = XMMatrixMultiply(worldMatrix, XMMatrixMultiply(terrainScaleMatrix, zPositionMatrix));
+//	z_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
+//	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csLand->getSRV());
+//	terrainShader->render(renderer->getDeviceContext(), z_Terrain->getIndexCount());
+//	// XZ TERRAIN
+//	neighbourWorldMatrix = XMMatrixMultiply(worldMatrix, XMMatrixMultiply(terrainScaleMatrix, xzPositionMatrix));
+//	xz_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
+//	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csLand->getSRV());//XMFLOAT4(tessellationFactor, height * 100, LODnear, LODfar), scale, XMFLOAT2(xOffset, yOffset), timeOfYear);
+//	terrainShader->render(renderer->getDeviceContext(), xz_Terrain->getIndexCount());
+//	
+//	
+//
+//	// Set back buffer as render target and reset view port.
+//	renderer->setBackBufferRenderTarget();
+//	renderer->resetViewport();
+//	
+//
+//}
+//*/
 
 void App1::firstPass()
 {
@@ -346,9 +357,9 @@ void App1::firstPass()
 
 
 	////////
-	float lengthOfDay = -1 * cos(vars.TimeOfYear / 57.29577);// replace -6 [-1] w/ -12*sin(latitude)  <--- to be moved to PS
+	float lengthOfDay = -1 * cos(vars.TimeOfYear / 57.29577);// replace -6 [-1] w/ -12*sin(latitude)  <--- to be moved to PS?
 ///
-	float sunAltitude = lengthOfDay - (cos(time / 3.81) / 0.8);
+	float sunAltitude = lengthOfDay - (cos(time / 3.81) / 0.8);// necessary for sun mesh position
 
 
 // Clear the scene. 
@@ -361,24 +372,27 @@ void App1::firstPass()
 	worldMatrix = renderer->getWorldMatrix();
 	//renderer.
 	viewMatrix = camera->getViewMatrix();
-	projectionMatrix = (renderLODchunks ? renderer->getOrthoMatrix() : renderer->getProjectionMatrix());// renderer->getOrthoMatrix();//getProjectionMatrix();//
+	projectionMatrix = (renderLODchunks ? renderer->getOrthoMatrix() : renderer->getProjectionMatrix());
 
 	// Send geometry data, set shader parameters, render object with shader
 
 	renderer->setZBuffer(false);///	render sky
 	XMMATRIX orthoMatrix = renderer->getOrthoMatrix();  // ortho matrix for 2D rendering
 	XMMATRIX orthoViewMatrix = camera->getOrthoViewMatrix();	// Default camera position for orthographic rendering
+	XMMATRIX cameraPositionMatrix = XMMatrixTranslation(camera->getPosition().x, camera->getPosition().y, camera->getPosition().z);
 
-	mapMesh->sendData(renderer->getDeviceContext());
-	sunShader->setShaderParameters(renderer->getDeviceContext(), worldMatrix, viewMatrix, orthoMatrix, mapTexture->getShaderResourceView(), vars.TimeOfYear);
-	sunShader->render(renderer->getDeviceContext(), mapMesh->getIndexCount());
+	renderer->set2SidedMode(true);
+	sky_sphere->sendData(renderer->getDeviceContext());// sky?
+	sunShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(XMMatrixMultiply(worldMatrix, XMMatrixScaling(8, 8, 8)),cameraPositionMatrix ), viewMatrix, projectionMatrix, mapTexture->getShaderResourceView(), vars.TimeOfYear);
+	sunShader->render(renderer->getDeviceContext(), sky_sphere->getIndexCount());
+	renderer->set2SidedMode(false);
 
 	///*// test sphere -- SUN
-	sphere->sendData(renderer->getDeviceContext());//						  	
+	sun_mesh->sendData(renderer->getDeviceContext());//						  	
 	XMMATRIX testTranslation = XMMatrixTranslation(-1000 * sin(time / 3.81), 1000* sunAltitude, 1000 * -sin((time / 3.81) + 1.78) / (1.75 + sin(vars.TimeOfYear / 57.29577)));//XMMatrixTranslation(testPosition.x, testPosition.y, testPosition.z);	
-	testTranslation = XMMatrixMultiply(testTranslation, XMMatrixTranslation(camera->getPosition().x, camera->getPosition().y, camera->getPosition().z));
+	testTranslation = XMMatrixMultiply(testTranslation, cameraPositionMatrix);
 	sunShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(XMMatrixMultiply(worldMatrix, XMMatrixScaling(10, 10, 10)), testTranslation), viewMatrix, projectionMatrix, mapTexture->getShaderResourceView());// light, camera, terrains[0]->GetChunkPosition(), scale, timeOfYear);
-	sunShader->render(renderer->getDeviceContext(), sphere->getIndexCount());
+	sunShader->render(renderer->getDeviceContext(), sun_mesh->getIndexCount());
 	//*/
 	renderer->setZBuffer(true);
 
@@ -429,6 +443,8 @@ void App1::firstPass()
 	const XMMATRIX x2PositionMatrix = XMMatrixTranslation(-xz_TerrainMeshOffset, 0.0, xz_TerrainMeshOffset);// 
 	const XMMATRIX z2PositionMatrix = XMMatrixTranslation(xz_TerrainMeshOffset, 0.0, -xz_TerrainMeshOffset);// 
 	const XMMATRIX xz2PositionMatrix = XMMatrixTranslation(-xz_TerrainMeshOffset, 0.0, -xz_TerrainMeshOffset);
+	const XMMATRIX xz3PositionMatrix = XMMatrixTranslation(xz_TerrainMeshOffset * 3, 0.0, -xz_TerrainMeshOffset);
+	const XMMATRIX xz4PositionMatrix = XMMatrixTranslation(-xz_TerrainMeshOffset, 0.0, xz_TerrainMeshOffset * 3);
 
 	XMMATRIX neighbourWorldMatrix;
 
@@ -460,6 +476,16 @@ void App1::firstPass()
 	terrainShader->render(renderer->getDeviceContext(), z_Terrain->getIndexCount());
 	// XZ2 TERRAIN
 	neighbourWorldMatrix = XMMatrixMultiply(worldMatrix, XMMatrixMultiply(terrainScaleMatrix, xz2PositionMatrix));
+	xz_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
+	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csLand->getSRV());
+	terrainShader->render(renderer->getDeviceContext(), xz_Terrain->getIndexCount());
+	// XZ3 TERRAIN
+	neighbourWorldMatrix = XMMatrixMultiply(worldMatrix, XMMatrixMultiply(terrainScaleMatrix, xz3PositionMatrix));
+	xz_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
+	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csLand->getSRV());
+	terrainShader->render(renderer->getDeviceContext(), xz_Terrain->getIndexCount());
+	// XZ4 TERRAIN
+	neighbourWorldMatrix = XMMatrixMultiply(worldMatrix, XMMatrixMultiply(terrainScaleMatrix, xz4PositionMatrix));
 	xz_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
 	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csLand->getSRV());
 	terrainShader->render(renderer->getDeviceContext(), xz_Terrain->getIndexCount());
@@ -572,20 +598,20 @@ void App1::gui()
 	ImGui::Checkbox("Wireframe mode", &wireframeToggle);
 
 	ImGui::Checkbox("Toggle Flora", &floraOn);
-	ImGui::Checkbox("(ortho view) Render LOD Chunks", &renderLODchunks);
+	ImGui::Checkbox("(orthographic view)", &renderLODchunks);
 	//ImGui::SliderFloat("thingy", &test, 0.51, 1.999);
 	
-	if (ImGui::CollapsingHeader("Terrain Generation Settings##")) {/// TERRAIN GEN
-		ImGui::SliderInt("##Terrain Resolution", &terrainResolution, 2, 1024, "Terrain Resolution: %d");
-		ImGui::SameLine();
-		if (ImGui::Button("16")) 
-			terrainResolution = 16;
-
-		ImGui::Text("Pre-generation vertical offset");
-		ImGui::SliderFloat("##height", &vars.Amplitude, -20, 20, "Height: %.4f", 2.5f);
-
-		ImGui::SliderInt("##Octaves", &octaves, 1, 16, "%d Octaves");
-	}
+	//if (ImGui::CollapsingHeader("Terrain Generation Settings##")) {/// TERRAIN GEN
+	//	//ImGui::SliderInt("##Terrain Resolution", &terrainResolution, 2, 1024, "Terrain Resolution: %d");
+	//	//ImGui::SameLine();
+	//	//if (ImGui::Button("16")) 
+	//	//	terrainResolution = 16;
+	//
+	//	//ImGui::Text("Pre-generation vertical offset");
+	//	//ImGui::SliderFloat("##height", &vars.Amplitude, -20, 20, "Height: %.4f", 2.5f);
+	//
+	//	//ImGui::SliderInt("##Octaves", &octaves, 1, 16, "%d Octaves");
+	//}
 	ImGui::Text("\nHigher scale magnifies the terrain");
 	ImGui::SliderFloat("##Scale", &vars.Scale, 0.01, 50, "Scale: %.4f", 2.5f);
 
@@ -596,7 +622,7 @@ void App1::gui()
 		
 		
 	
-		if (ImGui::Button("Generate Terrain")) {
+		if (ImGui::Button("Regenerate Terrain")) {
 			renderMinimap();
 		}
 	//	if (terrainResolution != terrains[0]->GetResolution()) {
@@ -615,7 +641,7 @@ void App1::gui()
 	//	}
 	//}
 	ImGui::SliderFloat("##latitude", &vars.GlobalPosition.y, -2.0*vars.PlanetDiameter, 2.0*vars.PlanetDiameter, "Latitude: %.2f", 3.0f);
-	ImGui::SliderFloat("##Planetdiameter", &vars.PlanetDiameter, 50, 90000, "Planet Diameter: %.2f", 5.0f);
+	ImGui::SliderFloat("##Planetdiameter", &vars.PlanetDiameter, 50, 127420, "Planet Diameter: %.2f", 5.0f);
 
 	
 
@@ -623,7 +649,7 @@ void App1::gui()
 		ImGui::SliderFloat("near threshold", &vars.LODnear, 0.0, vars.LODfar);
 		ImGui::SliderFloat("far threshold", &vars.LODfar, vars.LODnear, 200);
 		ImGui::SliderInt("Maximum Tessellation Factor", &vars.TessellationFactor, 0, 6, "2^%i");
-		ImGui::SliderFloat("Amplitude", &waterAmplitude, 0, 20, "%.1f", 2.0);
+		//ImGui::SliderFloat("Amplitude", &waterAmplitude, 0, 20, "%.1f", 2.0);
 	ImGui::End();
 
 	//ImGui::Begin("Minimap");

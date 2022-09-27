@@ -4,7 +4,7 @@ ComputeBlurHor::ComputeBlurHor(ID3D11Device* device, HWND hwnd, int w, int h) : 
 {
 	sWidth = w;
 	sHeight = h;
-	initShader(L"horizontal_blur_cs.cso", NULL);
+	initShader(L"shaders/horizontal_blur_cs.cso", NULL);
 }
 
 ComputeBlurHor::~ComputeBlurHor()

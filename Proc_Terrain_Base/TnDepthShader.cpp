@@ -2,7 +2,7 @@
 
 TnDepthShader::TnDepthShader(ID3D11Device* device, HWND hwnd) : DepthShader(device, hwnd)
 {
-	initShader(L"tess_vs.cso", L"tess_hs.cso", L"tessDepth_ds.cso", L"depth_ps.cso");
+	initShader(L"shaders/tess_vs.cso", L"shaders/tess_hs.cso", L"shaders/tessDepth_ds.cso", L"shaders/depth_ps.cso");
 }
 
 void TnDepthShader::initShader(const wchar_t* vsFilename, const wchar_t* hsFilename, const wchar_t* dsFilename, const wchar_t* psFilename)

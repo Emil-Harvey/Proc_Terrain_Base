@@ -7,8 +7,9 @@ SamplerState Sampler0 : register(s0);
 
 struct InputType
 {
-    float4 position : POSITION;
-    //float4 worldPosition : POSITION1;
+    float4 position : SV_POSITION;
+    float4 worldPosition : POSITION;
+    //float4 projPosition : POSITION2;
     float2 tex : TEXCOORD0;
     float3 normal : NORMAL;
 

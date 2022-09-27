@@ -259,7 +259,7 @@ output.humidity = heightmapSampled.r;
     output.noise2 =  saturate(output.humidity * pow(1 - bfm(seedc.xz / (scale * 29), 4), 3));
 
     // similar noise for beach pebbles, but offset by 99 so the noise does not line up
-    output.noise = saturate(pow(1 - bfm(seedc.xz / (scale * 10), 3), 3)+perlin(seedc.xz / (scale * 111.1171)));//pow(saturate(1 - bfm(99 + coords / (scale * 12), 4)), 3);
+    output.noise = saturate(pow(1 - bfm(seedc.xz / (scale * 60), 3), 3)+perlin(seedc.xz / (scale * 211.1171))+ 0.3);//pow(saturate(1 - bfm(99 + coords / (scale * 12), 4)), 3);
     //output.var = cos(output.world_position.x);
 
 

@@ -36,44 +36,61 @@ float hash12(float2 p)
     p3 += dot(p3, p3.yzx + 33.33);
     return frac((p3.x + p3.y) * p3.z);
 }
+
 float2 random_offset(float seed) {
     return float2(100.0 + hash12(float2(seed, 0.0)) * 100.0,
                   100.0 + hash12(float2(seed, 1.0)) * 100.0);
+}
+
+float interpolate(float a0, float a1, float w)
+{
+    return pow(w, 2.0) * (3.0 - 2.0 * w) * (a1 - a0) + a0;
+} //*/
+float avg(float a, float b) { return (a + b) / 2.0; }
+float valueNoise(float2 coords) 
+{
+    float2 i_coords = float2(int2(coords));
+    float fx = coords.x - i_coords.x; float fy = coords.y - i_coords.y;
+    float north = hash12(float2(i_coords.x, i_coords.y+1));
+    float south = hash12(float2(i_coords.x, i_coords.y-1));
+    float east =  hash12(float2(i_coords.x+1, i_coords.y));
+    float west =  hash12(float2(i_coords.x-1, i_coords.y));
+    float value = hash12(i_coords);
+
+    float val_y = interpolate(avg(north,value), avg(south,value), coords.y - i_coords.y);
+    float val_x = interpolate(avg(value,east), avg(value,west), coords.x - i_coords.x);
+    return val_y; interpolate(val_y, val_x, cos(fx / fy));//(val_x + val_y) * 0.5;//
+
 }
 float NoiseTexture(float2 coords, float scale,int octs, float roughness,float distortion)
 {
     float val = 0;
     //float weight = 1;
 
-    float2 d_coords = coords * scale;
+    //float xz = coords.x + (0.10);
+    //float s2 = xz * -0.211324865405187;
+    //float yy = coords.y * 0.577350269189626;
+    //float xr = coords.x + (s2 + yy);
+    //float zr = (0.10) + (s2 + yy);
+    //float yr = xz * -0.577350269189626 + yy;
+
+
+    float2 d_coords = coords * scale *scale;//float2(yr,xr)
 
     if (distortion >= 0.0) {
         d_coords += float2(perlin(d_coords + random_offset(0.0)) * distortion,  //
                            perlin(d_coords + random_offset(1.0)) * distortion); //
     }
+    d_coords /= scale;
     
-    
-    /*
-    for (int layers = 0; layers < distortion; layers++)
-    {
-        float d = (distortion > 0.0) ? (0.5+0.8*bfm(scale * d_coords, int(distortion)+1)) * 401.0 *saturate(distortion): 0.0;//
-    
-        d_coords = float2(d,d)  ;// distorted coords (perlin(scale * coords)*9999.0)
-    }*/
-    
-
-
-
-
     for (int o = 0; o < octs; o++)
     {
         int freqMultiplier = 4;//1.125;// default = 2
-        float h = perlin(scale * d_coords * pow(4, o)) * pow(saturate(roughness) , o);//
+        float h = perlin(scale * d_coords * pow(2, float(o))) * pow( saturate(roughness), float(o) );//
         //h *= h;
         //h *= weight;
         //weight = h;
         val += h;
-
     }
     return val; // ensure output is between 0 & 1.0
 }
@@ -85,6 +102,9 @@ float invsmoothstep(float y)
     t -= (t * (4.0 * t * t - 3.0) + yn) / (12.0 * t * t - 3.0);
     return y;//t + 0.5;
 }
+
+
+
 float get_terrain_height(float2 input, float octaves) {
     float ret;
     const float continental_noise = lerp(
@@ -115,33 +135,38 @@ float get_terrain_height(float2 input, float octaves) {
 float get_alt_terrain_height(float2 input, float octaves) // a revised terrain algorithm after experimentation in blender
 {
     float height = 0;
-    float2 alt_input = input + float2(55.4, 35.1);
-    float scale_coeff = scale * 100.0;
+    const float2 alt_input = input + float2(55.4, 35.1);
+    const float scale_coeff = scale * 30.0;
 
     // to start, get some noise that will be used to vary how rough the noises are and much they are distorted.
-    float roughness_noise = saturate(0.4+0.4 * NoiseTexture(input, 0.16/ scale_coeff, 5, 0.5, 0.5));//bfm(input / scale_coeff,15 );//
-    float distortion_noise = saturate(0.5 + 0.6 * NoiseTexture(alt_input, 0.16 / scale_coeff, 5, 0.5, 0.5));
+    const float roughness_noise = saturate(0.4+0.4 * NoiseTexture(input, 0.16/ scale_coeff, 5, 0.5, 1.5));//bfm(input / scale_coeff,15 );//
+    const float distortion_noise = saturate(0.5 + 0.6 * NoiseTexture(alt_input, 0.16 / scale_coeff, 5, 0.5, 0.5));
 
-    float mountain_noise = 1.3-2.0*abs(NoiseTexture(input, 3.6 / scale_coeff, 9, roughness_noise, 1.0+ 5.0 * distortion_noise));
-    float valley_noise = abs(NoiseTexture(alt_input, 3.6 / scale_coeff, 9, roughness_noise, 1.0 +5.0* distortion_noise));
+    const float mountain_noise = 1.0-abs(2.0 * NoiseTexture(input, 3.6 / scale_coeff, 8, roughness_noise, distortion_noise));// 
+    const float valley_noise = abs(2.0 * NoiseTexture(alt_input, 3.6 / scale_coeff, 8, roughness_noise, distortion_noise));//0.5+0.5*
 
     height = mountain_noise * valley_noise;//
     
-    float macro_vary_noise = NoiseTexture(alt_input, 0.66 / scale_coeff, 7, roughness_noise, distortion_noise);
+    const float macro_vary_noise = NoiseTexture(alt_input, 0.66 / scale_coeff, 7, roughness_noise, distortion_noise);
 
     height = /*smooth*/max(macro_vary_noise + height, macro_vary_noise * height);
 
     // APPLY SCALING/SMOOTHING (inv sm. step)...
     // make sure height is centred on 0
+    height = invsmoothstep(-0.25+(1.0* height))-0.10;
+    //return height * 10 * scale;
+    float subcontinent_noise = NoiseTexture(input, 0.6 / scale_coeff, 8, 0.59589, min(distortion_noise,0.7));
 
-    float subcontinent_noise = NoiseTexture(input, 0.6 / scale_coeff, 6, 0.59589, min(distortion_noise,0.7));
-
-    height *= 59.8 * scale;
-    subcontinent_noise *= 53.4 * scale;
+    height *= 59.8 ;
+    subcontinent_noise *= 53.4 ;
 
     height += subcontinent_noise;
     //...
-    return height;
+    const float continental_noise = lerp(
+        flow(input / (4900.7 * scale), 5) + (0.2 * bfm(input / (500 * scale), octaves)),
+        1 * (bfm(input / (4900.7 * scale), 6) + (0.2 * bfm(input / (500 * scale), octaves))), perlin(input / (919.7 * scale)));
+
+    return continental_noise * height * scale* 3.0;//
 }
 
 
@@ -194,7 +219,7 @@ void main(int3 groupThreadID : SV_GroupThreadID,
     float humidity = 0;// calculate humidity 
     //*
     if (true || height <= 0)
-        humidity = 99;// underwater, duh
+        humidity = 0.9;// underwater, duh
     else {
         float h_attenuation = 100.0 / 1.0; // how far humidity is carried from 'water sources' 
         float positionOffset = 50;
@@ -264,13 +289,6 @@ void main(int3 groupThreadID : SV_GroupThreadID,
 }
 
 //////////////////////--------------------------//////////////////////////
-
-
-
-float interpolate(float a0, float a1, float w)
-{
-    return pow(w, 2.0) * (3.0 - 2.0 * w) * (a1 - a0) + a0;
-} //*/
 
 
 

@@ -4,7 +4,7 @@ ComputeBlurVert::ComputeBlurVert(ID3D11Device* device, HWND hwnd, int w, int h) 
 {
 	sWidth = w;
 	sHeight = h;
-	initShader(L"vertical_blur_cs.cso", NULL);
+	initShader(L"shaders/vertical_blur_cs.cso", NULL);
 }
 
 ComputeBlurVert::~ComputeBlurVert()
