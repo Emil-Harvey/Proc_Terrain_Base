@@ -15,7 +15,7 @@
 // Globals
 //const bool FULL_SCREEN = false;
 //const bool VSYNC_ENABLED = true;
-const float SCREEN_DEPTH = 6000.0f;	// 1000.0f
+const float SCREEN_DEPTH = 60000.0f;	// 1000.0f
 const float SCREEN_NEAR = 0.1f;		//0.1f
 
 // Includes

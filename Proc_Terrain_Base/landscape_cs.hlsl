@@ -47,7 +47,7 @@ float interpolate(float a0, float a1, float w)
     return pow(w, 2.0) * (3.0 - 2.0 * w) * (a1 - a0) + a0;
 } //*/
 float avg(float a, float b) { return (a + b) / 2.0; }
-float valueNoise(float2 coords) 
+float valueNoise(float2 coords) // Bad. delete
 {
     float2 i_coords = float2(int2(coords));
     float fx = coords.x - i_coords.x; float fy = coords.y - i_coords.y;
@@ -166,7 +166,7 @@ float get_alt_terrain_height(float2 input, float octaves) // a revised terrain a
         flow(input / (4900.7 * scale), 5) + (0.2 * bfm(input / (500 * scale), octaves)),
         1 * (bfm(input / (4900.7 * scale), 6) + (0.2 * bfm(input / (500 * scale), octaves))), perlin(input / (919.7 * scale)));
 
-    return continental_noise * height * scale* 3.0;//
+    return continental_noise * (3*continental_noise + height) * scale* 3.0;//
 }
 
 

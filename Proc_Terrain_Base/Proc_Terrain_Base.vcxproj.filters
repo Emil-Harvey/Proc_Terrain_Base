@@ -75,6 +75,9 @@
     <ClCompile Include="TnDepthShader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="ComputeErosion.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="App1.h">
@@ -137,6 +140,9 @@
     <ClInclude Include="TnDepthShader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="ComputeErosion.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="shaders\light_ps.hlsl">
@@ -197,6 +203,9 @@
       <Filter>Resource Files</Filter>
     </FxCompile>
     <FxCompile Include="depth_ps.hlsl">
+      <Filter>Resource Files</Filter>
+    </FxCompile>
+    <FxCompile Include="erosion_cs.hlsl">
       <Filter>Resource Files</Filter>
     </FxCompile>
   </ItemGroup>

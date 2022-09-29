@@ -182,6 +182,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="ComputeBlurVert.cpp" />
+    <ClCompile Include="ComputeErosion.cpp" />
     <ClCompile Include="ComputeLandscape.cpp" />
     <ClCompile Include="DepthShader.cpp" />
     <ClCompile Include="Frustrum.cpp" />
@@ -209,6 +210,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClInclude>
     <ClInclude Include="ComputeBlurVert.h" />
+    <ClInclude Include="ComputeErosion.h" />
     <ClInclude Include="ComputeLandscape.h" />
     <ClInclude Include="DepthShader.h" />
     <ClInclude Include="Frustrum.h" />
@@ -255,6 +257,11 @@
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(Directory)shaders/%(Filename).cso</ObjectFileOutput>
+    </FxCompile>
+    <FxCompile Include="erosion_cs.hlsl">
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>
       <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(Directory)shaders/%(Filename).cso</ObjectFileOutput>
     </FxCompile>
     <FxCompile Include="tess_depth_ds.hlsl">

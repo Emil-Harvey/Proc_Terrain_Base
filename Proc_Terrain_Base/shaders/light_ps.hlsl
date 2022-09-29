@@ -264,7 +264,7 @@ float3 calculateNormals(float2 tex, Texture2D heightMap)
 float4 main(InputType input) : SV_TARGET
 {
     float dist = length(input.world_position.xz - viewpos.xz);// nice little dither fade of render distance
-    const float clip_near = 3000.0;
+    const float clip_near = 4000.0;
     const float fade_dist = 1500.0;
     clip(dist > clip_near ? ((clip_near+ fade_dist -dist)/ fade_dist) + (((input.position.x % 2.5) - 1.25) * ((input.position.y % 2.5) - 1.25)) : 1);
 
@@ -350,8 +350,8 @@ float4 main(InputType input) : SV_TARGET
        // }
         else {
             //  // ((rock or cliff,a,b) or (snow or ((sand or gravel,a,b) or (grass or grass2,a,b),a,b),a,b),a,b) 
-            currentMat = heightBlend( heightBlend(heightBlend(heightBlend(stone, sand, input.noise, uv), heightBlend(heightBlend(grass2, grass, input.noise2, uv), heightBlend(rock, savan, input.temperature / 22.4, uv), 1-aridness, uv), input.beachness, uv), snow, input.snowness, uv), cliff, 1- input.steepness, uv);
-            //currentMat = heightBlend(rock, cliff, input.temperature / 22.4, uv);
+            currentMat = heightBlend( heightBlend(heightBlend(heightBlend(stone, sand, input.noise, uv), heightBlend(heightBlend(grass2, grass, input.noise2, uv), heightBlend(rock, grass, input.temperature / 22.4, uv), 1-aridness, uv), input.beachness, uv), snow, input.snowness, uv), cliff, 1- input.steepness, uv);
+            //currentMat = heightBlend(savan,grass2 , input.temperature / 22.4, uv);
 
             textureColour = currentMat.albedo_specular; //float4(snowness, snowness, snowness, 1.0); //
             textureNormal = currentMat.normal_height;

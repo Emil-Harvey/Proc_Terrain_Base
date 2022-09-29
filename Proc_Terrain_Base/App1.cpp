@@ -14,14 +14,18 @@ App1::App1()
 	horBlur = nullptr;
 	verBlur = nullptr;
 	csLand = nullptr;
+	csErosion = nullptr;
 	mapMesh = nullptr;
 	mapTexture = nullptr;//
 	m_Terrain = nullptr;
 	x_Terrain = nullptr;
 	z_Terrain = nullptr;
 	xz_Terrain = nullptr;
+	far_Terrain = nullptr;
 	m_clouds = nullptr;
 	f_Terrain = nullptr;
+	sun_mesh = nullptr;
+	sky_sphere = nullptr;
 }
 
 void App1::init(HINSTANCE hinstance, HWND hwnd, int screenWidth, int screenHeight, Input *in, bool VSYNC, bool FULL_SCREEN)
@@ -51,6 +55,7 @@ void App1::init(HINSTANCE hinstance, HWND hwnd, int screenWidth, int screenHeigh
 	horBlur = new ComputeBlurHor(renderer->getDevice(), hwnd, screenWidth, screenHeight);
 	verBlur = new ComputeBlurVert(renderer->getDevice(), hwnd, screenWidth, screenHeight);
 	csLand = new ComputeLandscape(renderer->getDevice(), hwnd, 1500, 1500);
+	csErosion = new ComputeErosion(renderer->getDevice(), hwnd, 1500, 1500);
 
 	
 	// minimap
@@ -61,13 +66,14 @@ void App1::init(HINSTANCE hinstance, HWND hwnd, int screenWidth, int screenHeigh
 	cloudShader = new CloudShader(renderer->getDevice(), hwnd);
 
 	// initialise RT objects. 
-	preDOFRT = new RenderTexture(renderer->getDevice(), screenWidth, screenHeight, /*400,300,*/ 0.1f, 1000.f);
+	preDOFRT = new RenderTexture(renderer->getDevice(), screenWidth, screenHeight, /*400,300,*/ 0.1f, 200.f);
 	cameraDepth = new ShadowMap(renderer->getDevice(), screenWidth, screenHeight);
 
 	m_Terrain = new TessellationPlane(renderer->getDevice(), renderer->getDeviceContext(), terrainResolution);
 	x_Terrain = new TessellationPlane(renderer->getDevice(), renderer->getDeviceContext(), terrainResolution);
 	z_Terrain = new TessellationPlane(renderer->getDevice(), renderer->getDeviceContext(), terrainResolution);
 	xz_Terrain = new TessellationPlane(renderer->getDevice(), renderer->getDeviceContext(), terrainResolution);
+	far_Terrain = new TessellationPlane(renderer->getDevice(), renderer->getDeviceContext(), terrainResolution);
 
 	f_Terrain = new PlaneMesh(renderer->getDevice(), renderer->getDeviceContext(), 280);
 
@@ -240,12 +246,16 @@ bool App1::renderMinimap()
 	csLand->setShaderParameters(renderer->getDeviceContext(), csLand->getSRV(), &vars);
 	csLand->compute(renderer->getDeviceContext(), 60, 60, 1);
 	csLand->unbind(renderer->getDeviceContext());
+
+	csErosion->setShaderParameters(renderer->getDeviceContext(), csLand->getSRV(), &vars);
+	csErosion->compute(renderer->getDeviceContext(), 60, 60, 1);
+	csErosion->unbind(renderer->getDeviceContext());
 	
 /*	// horiontal pass using unblurred copy of the scene
 	horBlur->setShaderParameters(renderer->getDeviceContext(), csLand->getSRV());
 	horBlur->compute(renderer->getDeviceContext(), ceil(60 / 256.f), 60, 1);
 	horBlur->unbind(renderer->getDeviceContext());/// 
-
+	
 	verBlur->setShaderParameters(renderer->getDeviceContext(), horBlur->getSRV());//preDOFRT->getShaderResourceView()
 	verBlur->compute(renderer->getDeviceContext(), 60, ceil(60 / 256.f), 1);
 	verBlur->unbind(renderer->getDeviceContext());/// works!
@@ -400,7 +410,7 @@ void App1::firstPass()
 
 	/// main terrain
 	m_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);//													
-	terrainShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(worldMatrix, m_TerrainMatrix), viewMatrix, projectionMatrix, textures, light, camera, &vars, csLand->getSRV());// XMFLOAT4(tessellationFactor, height * 100, LODnear, LODfar), scale, XMFLOAT2(xOffset, yOffset), timeOfYear);
+	terrainShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(worldMatrix, m_TerrainMatrix), viewMatrix, projectionMatrix, textures, light, camera, &vars, csErosion->getSRV());// XMFLOAT4(tessellationFactor, height * 100, LODnear, LODfar), scale, XMFLOAT2(xOffset, yOffset), timeOfYear);
 	terrainShader->render(renderer->getDeviceContext(), m_Terrain->getIndexCount());
 
 	
@@ -451,45 +461,78 @@ void App1::firstPass()
 	// X TERRAIN
 	neighbourWorldMatrix = XMMatrixMultiply(worldMatrix, XMMatrixMultiply(terrainScaleMatrix, xPositionMatrix));
 	x_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
-	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csLand->getSRV());
+	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csErosion->getSRV());
 	terrainShader->render(renderer->getDeviceContext(), x_Terrain->getIndexCount());
 	// Z TERRAIN
 	neighbourWorldMatrix = XMMatrixMultiply(worldMatrix, XMMatrixMultiply(terrainScaleMatrix, zPositionMatrix));
 	z_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
-	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csLand->getSRV());
+	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csErosion->getSRV());
 	terrainShader->render(renderer->getDeviceContext(), z_Terrain->getIndexCount());
 	// XZ TERRAIN
 	neighbourWorldMatrix = XMMatrixMultiply(worldMatrix, XMMatrixMultiply(terrainScaleMatrix, xzPositionMatrix));
 	xz_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
-	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csLand->getSRV());//XMFLOAT4(tessellationFactor, height * 100, LODnear, LODfar), scale, XMFLOAT2(xOffset, yOffset), timeOfYear);
+	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csErosion->getSRV());//XMFLOAT4(tessellationFactor, height * 100, LODnear, LODfar), scale, XMFLOAT2(xOffset, yOffset), timeOfYear);
 	terrainShader->render(renderer->getDeviceContext(), xz_Terrain->getIndexCount());
 
 	// X2 TERRAIN
 	neighbourWorldMatrix = XMMatrixMultiply(worldMatrix, XMMatrixMultiply(terrainScaleMatrix, x2PositionMatrix));
 	x_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
-	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csLand->getSRV());
+	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csErosion->getSRV());
 	terrainShader->render(renderer->getDeviceContext(), x_Terrain->getIndexCount());
 	// Z2 TERRAIN
 	neighbourWorldMatrix = XMMatrixMultiply(worldMatrix, XMMatrixMultiply(terrainScaleMatrix, z2PositionMatrix));
 	z_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
-	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csLand->getSRV());
+	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csErosion->getSRV());
 	terrainShader->render(renderer->getDeviceContext(), z_Terrain->getIndexCount());
 	// XZ2 TERRAIN
 	neighbourWorldMatrix = XMMatrixMultiply(worldMatrix, XMMatrixMultiply(terrainScaleMatrix, xz2PositionMatrix));
 	xz_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
-	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csLand->getSRV());
+	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csErosion->getSRV());
 	terrainShader->render(renderer->getDeviceContext(), xz_Terrain->getIndexCount());
 	// XZ3 TERRAIN
 	neighbourWorldMatrix = XMMatrixMultiply(worldMatrix, XMMatrixMultiply(terrainScaleMatrix, xz3PositionMatrix));
 	xz_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
-	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csLand->getSRV());
+	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csErosion->getSRV());
 	terrainShader->render(renderer->getDeviceContext(), xz_Terrain->getIndexCount());
 	// XZ4 TERRAIN
 	neighbourWorldMatrix = XMMatrixMultiply(worldMatrix, XMMatrixMultiply(terrainScaleMatrix, xz4PositionMatrix));
 	xz_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
+	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csErosion->getSRV());
+	terrainShader->render(renderer->getDeviceContext(), xz_Terrain->getIndexCount());
+
+	// render 6 far_terrains. messy temporary code.
+	// -x 0y; -x y; 0x y; x y; x 0y.
+	//const XMMATRIX farX_PositionMatrix = XMMatrixTranslation(xz_TerrainMeshOffset * 3, 0.0, xz_TerrainMeshOffset);// 
+/*	neighbourWorldMatrix = XMMatrixMultiply(worldMatrix, XMMatrixMultiply(XMMatrixMultiply(terrainScaleMatrix, xPositionMatrix), XMMatrixScaling(3.0, 1.0, 3.0)));
+	far_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
 	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csLand->getSRV());
 	terrainShader->render(renderer->getDeviceContext(), xz_Terrain->getIndexCount());
 
+	neighbourWorldMatrix = XMMatrixMultiply(worldMatrix, XMMatrixMultiply(XMMatrixMultiply(terrainScaleMatrix, xzPositionMatrix),XMMatrixScaling(3.0, 1.0, 3.0) ));
+	far_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
+	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csLand->getSRV());
+	terrainShader->render(renderer->getDeviceContext(), xz_Terrain->getIndexCount());
+
+	neighbourWorldMatrix = XMMatrixMultiply(worldMatrix, XMMatrixMultiply(XMMatrixMultiply(terrainScaleMatrix, zPositionMatrix), XMMatrixScaling(3.0, 1.0, 3.0)));
+	far_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
+	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csLand->getSRV());
+	terrainShader->render(renderer->getDeviceContext(), xz_Terrain->getIndexCount());
+
+	neighbourWorldMatrix = XMMatrixMultiply(worldMatrix, XMMatrixMultiply(XMMatrixMultiply(terrainScaleMatrix, xz2PositionMatrix),XMMatrixScaling(3.0, 1.0, 3.0) ));
+	far_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
+	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csLand->getSRV());
+	terrainShader->render(renderer->getDeviceContext(), xz_Terrain->getIndexCount());
+
+	neighbourWorldMatrix = XMMatrixMultiply(worldMatrix, XMMatrixMultiply(XMMatrixMultiply(terrainScaleMatrix, x2PositionMatrix),XMMatrixScaling(3.0, 1.0, 3.0) ));
+	far_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
+	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csLand->getSRV());
+	terrainShader->render(renderer->getDeviceContext(), xz_Terrain->getIndexCount());
+
+	////neighbourWorldMatrix = XMMatrixMultiply(worldMatrix, XMMatrixMultiply(XMMatrixScaling(3.0, 1.0, 3.0), XMMatrixMultiply(terrainScaleMatrix, xz4PositionMatrix)));
+	////far_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
+	////terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csLand->getSRV());
+	////terrainShader->render(renderer->getDeviceContext(), xz_Terrain->getIndexCount());
+*/
 	/*			Back Face Culling
 	
 	D3D11_RASTERIZER_DESC wfdesc;
@@ -663,7 +706,7 @@ void App1::gui()
 		if (ImGui::ArrowButton("zoom-", ImGuiDir_Down) && mapZoom > 1) {
 			mapZoom--;
 		}
-		ImGui::Image(csLand->getSRV()/*verBlur->getSRV()*/, ImVec2(200, 200));///
+		ImGui::Image(csErosion->getSRV()/*verBlur->getSRV()*/, ImVec2(200, 200));///
 		//ImGui::Image(my_tex_id, ImVec2(my_tex_w, my_tex_h), ImVec2(0, 0), ImVec2(1, 1), ImColor(255, 255, 255, 255), ImColor(255, 255, 255, 128));
 		//ImGui::ShowDemoWindow();
 		//if (ImGui::IsItemHovered())

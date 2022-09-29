@@ -19,6 +19,7 @@
 #include "ComputeBlurHor.h"
 #include "ComputeBlurVert.h"
 #include "ComputeLandscape.h"
+#include "ComputeErosion.h"
 
 class App1 : public BaseApplication
 {
@@ -61,13 +62,17 @@ private:
 	ShadowMap* cameraDepth;
 
 	ComputeLandscape* csLand;
+	ComputeErosion* csErosion;
 
 	PlaneMesh *f_Terrain;// used for foliage
 	TessellationPlane* m_Terrain;// main terrain tess-mesh
 	TessellationPlane* x_Terrain;// neighbour terrain on the x axis (+ or -)
 	TessellationPlane* z_Terrain;// neighbour on the z axis (north/south)
 	TessellationPlane* xz_Terrain;// diagonal neighbour 
-	float xz_TerrainMeshOffset = -1920;//	(half of terrain width - 1920 @ 16 res): 3840x3 = 11520 
+	const float xz_TerrainMeshOffset = -1920;//	(half of terrain width - 1920 @ 16 res): 3840x3 = 11520 
+
+	TessellationPlane* far_Terrain;// this will be 3x the size
+
 	TessellationPlane* m_Water;
 	PlaneMesh* m_clouds;
 	int Water_Mesh_Res = 48;
