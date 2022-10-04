@@ -34,7 +34,8 @@ public:
 protected:
 
 	bool render();
-	bool renderMinimap();
+	bool renderMinimap(bool erode_as_well = true);
+	bool erodeTerrain();// maybe move this to other class?
 	void depthPass();
 	void renderDOF();
 	void firstPass();
@@ -127,12 +128,13 @@ private:
 	///
 	
 	///
-	// map
+	// 'map'
 	OrthoMesh* mapMesh;
-	RenderTexture* mapTexture;
+	RenderTexture* mapRenderTexture;
 	int mapResolution = 1500;
 	int mapZoom = 6;// bigger means see more
-	
+	//
+	ID3D11ShaderResourceView* curHeightmapSRV;
 };
 
 #endif

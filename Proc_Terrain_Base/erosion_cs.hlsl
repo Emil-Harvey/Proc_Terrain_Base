@@ -15,7 +15,7 @@ float radialFXWeights[resolution];// [resolution] ;// fix?
 void hydraulicErosion(const float erosionrate, uint3 DTid);
 float3 getGradient(float2 pos);
 void initRadialEffect(int radius);
-const float erosionRate = 1.0;
+//const float erosionRate = 1.0;
 
 
 
@@ -35,12 +35,12 @@ void main(const uint3 DTid : SV_DispatchThreadID)
 
 	gOutput[DTid.xy] = colour;
 
-	hydraulicErosion(100.0f, DTid);
+	hydraulicErosion(0.50f, DTid);
 
-	//[unroll]
+	
 	gOutput[DTid.xy]; //= colour;
 }
-void hydraulicErosion(const float erosionrate, uint3 DTid)
+void hydraulicErosion(const float erosionRate, uint3 DTid)
 { // reference: implementation of a method for hydraulic erosion, Hans B (2015); sebastian lague (https://github.com/SebLague/Erosion-Demo/blob/master/Assets/Scripts/Erosion.cs)
 	
 	//initRadialEffect()
@@ -53,17 +53,23 @@ void hydraulicErosion(const float erosionrate, uint3 DTid)
 	const float deposition = 0.1; //	amount of sediment deposited when a particle is at max capacity
 	//const float minSlope = 0.5;
 	//maximum path steps? evaporation?
-	for (int k = 0; k < 9; k++) {
-		float speed = 1;
 
-		pos.x = hash12(DTid.xy) * (resolution - 1);
-			//pos.x = min(pos.x, resolution - 1);
-		pos.y = hash12(DTid.zx) * (resolution - 1);
-			//pos.y = min(pos.y, resolution - 1);
+	const int NUM_DROPLETS_SIMULATED = 1;
+	const int MAX_DROP_LIFE = 100;
+
+
+	for (int k = 0; k < NUM_DROPLETS_SIMULATED; k++) {
+		float speed = 1.0f;
+		pos.xy = DTid.xy;
+		//%%pos.x = hash12(DTid.xy) * (resolution - 1) ;// 0.35f + * 1.0
+			pos.x = clamp(pos.x, resolution *0.35,resolution*0.65);
+		//%%pos.y = hash12(DTid.zx) * (resolution - 1) *1.0 ;//0.35f + 
+			pos.y = clamp(pos.y, resolution * 0.35, resolution * 0.65);
+		
 
 		int2 cellIndex = int2(pos.x, pos.y);// the SE vertex of the cell we're in
 
-		height = gOutput[cellIndex];
+		height = gOutput[cellIndex].a;
 		float water = 1;
 		float inertia = 0.5;// determines how much sediment will be carried {?}
 		float sediment = 0;// amount of sediment carried/to deposit
@@ -71,7 +77,7 @@ void hydraulicErosion(const float erosionrate, uint3 DTid)
 		float2 dir = { 0, 0 };//direction of particle
 
 
-		for (int lifetime = 0; lifetime < 80; lifetime++) {
+		for (int lifetime = 0; lifetime < MAX_DROP_LIFE; lifetime++) {
 
 			float3 gradient = getGradient(pos);
 			height = gradient.z;
@@ -91,9 +97,10 @@ void hydraulicErosion(const float erosionrate, uint3 DTid)
 			pos.y += dir.y;
 
 			cellIndex = int2(pos.x, pos.y);// update cell
+			float2 inner_pos = abs(pos - (float2)cellIndex);
 
 			// Stop simulating particle if it's still, out of bounds, or has been evaporated
-			if ((dir.x == 0 && dir.y == 0) || (pos.x > resolution - 1) || (pos.y > resolution - 1) || (pos.x < 0) || (pos.y < 0) || (water < 0.001))
+			if ((dir.x == 0 && dir.y == 0) || (pos.x > resolution - 1) || (pos.y > resolution - 1) || (pos.x < 0) || (pos.y < 0) || (water < 0.01))
 			{
 				break;
 			}
@@ -102,29 +109,31 @@ void hydraulicErosion(const float erosionrate, uint3 DTid)
 
 			float capacity = min(-deltaHeight * speed * water, maxCap);// current sediment capacity at new position 
 
-			if (sediment > capacity || deltaHeight > 0) {// deposit sediment
+			float4 blue_alpha_mask = float4(0.f, 0.f, 0.1f, 1.f);
+
+			if (sediment > capacity || deltaHeight > 0 || height+deltaHeight <-2) {// deposit sediment    
 				// deposit as much as can fill the deltaHeight if going upwards, otherwise deposit a fraction
-				float deposited = (deltaHeight > 0) ? min(deltaHeight, sediment) : (sediment - capacity) * deposition;
+				float deposited = (deltaHeight > 0) ? (min(deltaHeight, sediment)) : ((sediment - capacity) * deposition);
 				sediment -= deposited;
 
 				//add the deposit to the 4 vertices of the cell via bilinear interpolation -- [should deposit over a wider area]
-				gOutput[cellIndex] += deposited * (1 - (pos.x - (int)pos.x)) * (1 - (pos.y - (int)pos.y));//SE vertex
-				gOutput[int2(cellIndex.x +1, cellIndex.y)] += deposited * (pos.x - (int)pos.x) * (1 - (pos.y - (int)pos.y));//SW vertex
-				gOutput[int2(cellIndex.x, cellIndex.y +1)] += deposited * (1 - (pos.x - (int)pos.x)) * (pos.y - (int)pos.y);//NE vertex
-				gOutput[int2(cellIndex.x +1, cellIndex.y +1)] += deposited * (pos.x - (int)pos.x) * (pos.y - (int)pos.y);//NW vertex
+				gOutput[cellIndex] += blue_alpha_mask * deposited * saturate(1 - inner_pos.x) * saturate(1 - inner_pos.y);	// SE vertex
+				gOutput[int2(cellIndex.x +1, cellIndex.y)] += blue_alpha_mask * deposited * saturate(inner_pos.x) * saturate(1 - inner_pos.y);// SW vertex
+				gOutput[int2(cellIndex.x, cellIndex.y +1)] += blue_alpha_mask * deposited * saturate(1 - inner_pos.x) * saturate(pos.y - (int)pos.y);// NE vertex
+				gOutput[int2(cellIndex.x +1, cellIndex.y +1)] += blue_alpha_mask * deposited * saturate(inner_pos.x) * saturate(pos.y - (int)pos.y);// NW vertex
 
 			}
 			else {// erode away some sediment
 				//do not erode more than the difference in height
-				float eroded = min((capacity - sediment) * erosionRate, -deltaHeight);
+				float eroded = clamp((capacity - sediment) * erosionRate, -deltaHeight, 0.0f);
 				// the amount of sediment picked up ......
-				float deltaSediment = (gOutput[cellIndex] < eroded) ? gOutput[cellIndex] : eroded;
+				float deltaSediment = (gOutput[cellIndex].a < eroded) ? gOutput[cellIndex].a : eroded;
 
 				//erode the sediment from the 4 vertices of the cell via bilinear interpolation -- [should erode over a wider area]
-				gOutput[cellIndex] -= eroded * (1 - (pos.x - (int)pos.x)) * (1 - (pos.y - (int)pos.y));//SE vertex
-				gOutput[int2(cellIndex.x + 1, cellIndex.y)] -= eroded * (pos.x - (int)pos.x) * (1 - (pos.y - (int)pos.y));//SW vertex
-				gOutput[int2(cellIndex.x, cellIndex.y + 1)] -= eroded * (1 - (pos.x - (int)pos.x)) * (pos.y - (int)pos.y);//NE vertex
-				gOutput[int2(cellIndex.x + 1, cellIndex.y + 1)] -= eroded * (pos.x - (int)pos.x) * (pos.y - (int)pos.y);//NW vertex
+				gOutput[cellIndex] -= blue_alpha_mask* eroded * saturate(1 - (pos.x - (int)pos.x)) * saturate(1 - (pos.y - (int)pos.y));//SE vertex
+				gOutput[int2(cellIndex.x + 1, cellIndex.y)] -= blue_alpha_mask * eroded * saturate(pos.x - (int)pos.x) * saturate(1 - (pos.y - (int)pos.y));//SW vertex
+				gOutput[int2(cellIndex.x, cellIndex.y + 1)] -= blue_alpha_mask * eroded * saturate(1 - (pos.x - (int)pos.x)) * saturate(pos.y - (int)pos.y);//NE vertex
+				gOutput[int2(cellIndex.x + 1, cellIndex.y + 1)] -= blue_alpha_mask * eroded * saturate(pos.x - (int)pos.x) * saturate(pos.y - (int)pos.y);//NW vertex
 				sediment += deltaSediment;
 							//if (radialFXIndices.size() / sizeof(int) <= 2) { break; }
 				/*// Use erosion brush to erode from all vertices inside the droplet's erosion radius
@@ -144,7 +153,7 @@ void hydraulicErosion(const float erosionrate, uint3 DTid)
 			}
 			// Update particle speed and water content
 			speed = sqrt(speed * speed + deltaHeight);
-			water *= 0.9; //(1 - evaporateSpeed);
+			water *= 0.79; //(1 - evaporateSpeed);
 
 
 		}
@@ -164,10 +173,10 @@ float3 getGradient(float2 pos) {
 	float y = (pos.y - cell.y);
 
 	float heights[4];// the heights at the 4 corners of the given cell
-	heights[SW] = gOutput[int2(cell.y , cell.x)];// bottom left or SW
-	heights[SE] = gOutput[int2(cell.y, cell.x+1)];// bottom right
-	heights[NW] = gOutput[int2(cell.y+1, cell.x)];// top left
-	heights[NE] = gOutput[int2(cell.y+1, cell.x+1)];// top right
+	heights[SW] = gOutput[int2(cell.y , cell.x)].a;// bottom left or SW
+	heights[SE] = gOutput[int2(cell.y, cell.x+1)].a;// bottom right
+	heights[NW] = gOutput[int2(cell.y+1, cell.x)].a;// top left
+	heights[NE] = gOutput[int2(cell.y+1, cell.x+1)].a;// top right
 
 	// bilinearly interpolate the gradient based on the proximity to each corner of the cell 
 	gradient.x = (heights[NE] - heights[NW]) * (1 - y) + (heights[SE] - heights[SW]) * y;

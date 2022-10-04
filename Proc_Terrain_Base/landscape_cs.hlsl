@@ -220,7 +220,7 @@ void main(int3 groupThreadID : SV_GroupThreadID,
     //*
     if (true || height <= 0)
         humidity = 0.9;// underwater, duh
-    else {
+    /*else {
         float h_attenuation = 100.0 / 1.0; // how far humidity is carried from 'water sources' 
         float positionOffset = 50;
         while (h_attenuation > 1) {//       this causes stress on the GPU? <- debug settings were enabled in properties
@@ -251,7 +251,7 @@ void main(int3 groupThreadID : SV_GroupThreadID,
         
         humidity = saturate(sqrt(humidity / 1.0) + min(macro_height, 0) / 1.60);
         
-        humidity = pow((humidity - 0.5) * 1.75, 5) + 0.50;// shift most values closer to 0.5 */
+        humidity = pow((humidity - 0.5) * 1.75, 5) + 0.50;// shift most values closer to 0.5 *
         
         
 
@@ -261,13 +261,13 @@ void main(int3 groupThreadID : SV_GroupThreadID,
 
 	float4 output = float4(0, 0, 1, 1);
 
-	[unroll]    /// what does this do
+	
 
     output.a = height;
     output.r = humidity;//
 
     output.g = slope; // / manipulationDetails.z;
-    output.b = 0.01 * height / (1+pow(manipulationDetails.z,3));
+    output.b = 0.6;//0.01 * height / (1+pow(manipulationDetails.z,3));
     //if (height < 0) { output.b = 1+height; }
     //output.rgb = normal;//?
     /// output.rgb -> humidity & wind?
