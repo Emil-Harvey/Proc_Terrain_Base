@@ -219,7 +219,7 @@ void main(int3 groupThreadID : SV_GroupThreadID,
     float humidity = 0;// calculate humidity 
     //*
     if (true || height <= 0)
-        humidity = 0.9;// underwater, duh
+        humidity = 0.5;// underwater, duh
     /*else {
         float h_attenuation = 100.0 / 1.0; // how far humidity is carried from 'water sources' 
         float positionOffset = 50;
@@ -263,11 +263,11 @@ void main(int3 groupThreadID : SV_GroupThreadID,
 
 	
 
-    output.a = height;
-    output.r = humidity;//
+    output.a = height;//40+sin(degrees(coords.y)) * 40.f;//
+    output.r = 0.5;//humidity
 
     output.g = slope; // / manipulationDetails.z;
-    output.b = 0.6;//0.01 * height / (1+pow(manipulationDetails.z,3));
+    output.b = 0.5;//0.01 * height / (1+pow(manipulationDetails.z,3));
     //if (height < 0) { output.b = 1+height; }
     //output.rgb = normal;//?
     /// output.rgb -> humidity & wind?

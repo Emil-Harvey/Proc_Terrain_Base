@@ -80,7 +80,7 @@ void App1::init(HINSTANCE hinstance, HWND hwnd, int screenWidth, int screenHeigh
 
 	m_clouds = new PlaneMesh(renderer->getDevice(), renderer->getDeviceContext(), 16);
 
-	vars.LODfar = 23;//
+	vars.LODfar = 53;//
 	vars.Scale = 7;
 	vars.PlanetDiameter = 127420;// a 1/1000th of earth
 	vars.TessellationFactor = 5;
