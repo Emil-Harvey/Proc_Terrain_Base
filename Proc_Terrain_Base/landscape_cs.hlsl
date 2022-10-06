@@ -166,7 +166,7 @@ float get_alt_terrain_height(float2 input, float octaves) // a revised terrain a
         flow(input / (4900.7 * scale), 5) + (0.2 * bfm(input / (500 * scale), octaves)),
         1 * (bfm(input / (4900.7 * scale), 6) + (0.2 * bfm(input / (500 * scale), octaves))), perlin(input / (919.7 * scale)));
 
-    return continental_noise * (3*continental_noise + height) * scale* 3.0;//
+    return ((3.8f*continental_noise) + (continental_noise * height)) * scale* 3.0;//
 }
 
 

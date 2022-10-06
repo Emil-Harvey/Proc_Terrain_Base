@@ -258,7 +258,7 @@ bool App1::renderMinimap(bool erode_as_well)
 bool App1::erodeTerrain()
 {
 	csErosion->setShaderParameters(renderer->getDeviceContext(), curHeightmapSRV, &vars);
-	csErosion->compute(renderer->getDeviceContext(), 60, 60, 1);
+	csErosion->compute(renderer->getDeviceContext(), 80, 80, 1);
 	csErosion->unbind(renderer->getDeviceContext());
 	curHeightmapSRV= csErosion->getSRV();
 

@@ -35,7 +35,7 @@ void main(const uint3 DTid : SV_DispatchThreadID)
 
 	gOutput[DTid.xy] = colour;
 
-	hydraulicErosion(0.50f, DTid);
+	hydraulicErosion(0.90f, DTid);
 
 	
 	gOutput[DTid.xy]; //= colour;
@@ -54,17 +54,17 @@ void hydraulicErosion(const float erosionRate, uint3 DTid)
 	//const float minSlope = 0.5;
 	//maximum path steps? evaporation?
 
-	const int NUM_DROPLETS_SIMULATED = 1;
+	const int NUM_DROPLETS_SIMULATED = 10;
 	const int MAX_DROP_LIFE = 100;
 
 
 	for (int k = 0; k < NUM_DROPLETS_SIMULATED; k++) {
 		float speed = 1.0f;
-		pos.xy = DTid.xy;
-		//%%pos.x = hash12(DTid.xy) * (resolution - 1) ;// 0.35f + * 1.0
-			pos.x = clamp(pos.x, resolution *0.35,resolution*0.65);
-		//%%pos.y = hash12(DTid.zx) * (resolution - 1) *1.0 ;//0.35f + 
-			pos.y = clamp(pos.y, resolution * 0.35, resolution * 0.65);
+		//pos.xy = DTid.xy;
+		pos.x =  (1.15f + hash12(DTid.xy)) * (resolution - 1) * 0.3;// 
+			//pos.x = clamp(pos.x, resolution *0.35,resolution*0.65);
+		pos.y = (1.15f + hash12(DTid.zx)) * (resolution - 1) * 0.3;// 
+			//pos.y = clamp(pos.y, resolution * 0.35, resolution * 0.65);
 		
 
 		int2 cellIndex = int2(pos.x, pos.y);// the SE vertex of the cell we're in
@@ -98,7 +98,7 @@ void hydraulicErosion(const float erosionRate, uint3 DTid)
 
 			cellIndex = int2(pos.x, pos.y);// update cell
 			float2 inner_pos = abs(pos - (float2)cellIndex);
-
+			//gOutput[cellIndex] += 1;
 			// Stop simulating particle if it's still, out of bounds, or has been evaporated
 			if ((dir.x == 0 && dir.y == 0) || (pos.x > resolution - 1) || (pos.y > resolution - 1) || (pos.x < 0) || (pos.y < 0) || (water < 0.01))
 			{
@@ -109,7 +109,7 @@ void hydraulicErosion(const float erosionRate, uint3 DTid)
 
 			float capacity = min(-deltaHeight * speed * water, maxCap);// current sediment capacity at new position 
 
-			float4 blue_alpha_mask = float4(0.f, 0.f, 0.1f, 1.f);
+			float4 blue_alpha_mask = float4(0.f, 0.f, 0.1f, 0.0f);
 
 			if (sediment > capacity || deltaHeight > 0 || height+deltaHeight <-2) {// deposit sediment    
 				// deposit as much as can fill the deltaHeight if going upwards, otherwise deposit a fraction
@@ -117,7 +117,7 @@ void hydraulicErosion(const float erosionRate, uint3 DTid)
 				sediment -= deposited;
 
 				//add the deposit to the 4 vertices of the cell via bilinear interpolation -- [should deposit over a wider area]
-				gOutput[cellIndex] += blue_alpha_mask * deposited * saturate(1 - inner_pos.x) * saturate(1 - inner_pos.y);	// SE vertex
+				gOutput[cellIndex] += blue_alpha_mask *deposited* saturate(1 - inner_pos.x)* saturate(1 - inner_pos.y);	// SE vertex
 				gOutput[int2(cellIndex.x +1, cellIndex.y)] += blue_alpha_mask * deposited * saturate(inner_pos.x) * saturate(1 - inner_pos.y);// SW vertex
 				gOutput[int2(cellIndex.x, cellIndex.y +1)] += blue_alpha_mask * deposited * saturate(1 - inner_pos.x) * saturate(pos.y - (int)pos.y);// NE vertex
 				gOutput[int2(cellIndex.x +1, cellIndex.y +1)] += blue_alpha_mask * deposited * saturate(inner_pos.x) * saturate(pos.y - (int)pos.y);// NW vertex
@@ -125,12 +125,12 @@ void hydraulicErosion(const float erosionRate, uint3 DTid)
 			}
 			else {// erode away some sediment
 				//do not erode more than the difference in height
-				float eroded = clamp((capacity - sediment) * erosionRate, -deltaHeight, 0.0f);
+				float eroded = max((capacity - sediment) * erosionRate, -deltaHeight);//clamp?, 0.0f
 				// the amount of sediment picked up ......
 				float deltaSediment = (gOutput[cellIndex].a < eroded) ? gOutput[cellIndex].a : eroded;
 
 				//erode the sediment from the 4 vertices of the cell via bilinear interpolation -- [should erode over a wider area]
-				gOutput[cellIndex] -= blue_alpha_mask* eroded * saturate(1 - (pos.x - (int)pos.x)) * saturate(1 - (pos.y - (int)pos.y));//SE vertex
+				gOutput[cellIndex] -= blue_alpha_mask *eroded* saturate(1 - (pos.x - (int)pos.x))* saturate(1 - (pos.y - (int)pos.y));//SE vertex
 				gOutput[int2(cellIndex.x + 1, cellIndex.y)] -= blue_alpha_mask * eroded * saturate(pos.x - (int)pos.x) * saturate(1 - (pos.y - (int)pos.y));//SW vertex
 				gOutput[int2(cellIndex.x, cellIndex.y + 1)] -= blue_alpha_mask * eroded * saturate(1 - (pos.x - (int)pos.x)) * saturate(pos.y - (int)pos.y);//NE vertex
 				gOutput[int2(cellIndex.x + 1, cellIndex.y + 1)] -= blue_alpha_mask * eroded * saturate(pos.x - (int)pos.x) * saturate(pos.y - (int)pos.y);//NW vertex
