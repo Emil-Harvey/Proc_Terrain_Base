@@ -145,3 +145,27 @@ void TextureManager::addDefaultTexture()
 	}
 	
 }
+
+void TextureManager::exportToFile(LPCWSTR filename, ID3D11ShaderResourceView* textureSRV)
+{
+	ID3D11Texture2D* textureInterface = 0;
+	ID3D11Resource* textureResource = nullptr;
+	textureSRV->GetResource(&textureResource);
+	textureResource->QueryInterface<ID3D11Texture2D>(&textureInterface);
+
+	const GUID GUID_ContainerFormatPng = { 0x1b7cfaf4, 0x713f, 0x473c, 0xbb, 0xcd, 0x61, 0x37, 0x42, 0x5f, 0xae, 0xaf };
+	const GUID GUID_WICPixelFormat128bppRGBAFloat = { 0x6fddc324, 0x4e03, 0x4bfe, 0xb1, 0x85, 0x3d, 0x77, 0x76, 0x8d, 0xc9, 0x19 };
+	//WICPixelFormatGUID ggg = 
+	
+	/// TODO: Make RGBA pixel format work ^ 
+	HRESULT result;
+	result = SaveWICTextureToFile(deviceContext, textureInterface, GUID_ContainerFormatPng, filename);//, &GUID_WICPixelFormat128bppRGBAFloat
+
+	if (FAILED(result))
+	{
+		MessageBox(NULL, L"Failed to save PNG texture!", L"ERROR", MB_OK);
+	}
+
+	//delete textureInterface; textureInterface = 0;
+	//delete textureResource; textureResource = 0;
+}

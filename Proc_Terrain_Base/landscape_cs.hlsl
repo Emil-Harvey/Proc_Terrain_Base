@@ -166,7 +166,7 @@ float get_alt_terrain_height(float2 input, float octaves) // a revised terrain a
         flow(input / (4900.7 * scale), 5) + (0.2 * bfm(input / (500 * scale), octaves)),
         1 * (bfm(input / (4900.7 * scale), 6) + (0.2 * bfm(input / (500 * scale), octaves))), perlin(input / (919.7 * scale)));
 
-    return ((3.8f*continental_noise) + (continental_noise * height)) * scale* 3.0;//
+    return ((continental_noise * height) - (3.8f*continental_noise)) * scale* 3.0;//
 }
 
 
@@ -264,7 +264,7 @@ void main(int3 groupThreadID : SV_GroupThreadID,
 	
 
     output.a = height;//40+sin(degrees(coords.y)) * 40.f;//
-    output.r = 0.5;//humidity
+    output.r = height;//humidity
 
     output.g = slope; // / manipulationDetails.z;
     output.b = 0.5;//0.01 * height / (1+pow(manipulationDetails.z,3));

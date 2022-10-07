@@ -10,7 +10,7 @@ RWTexture2D<float4> gOutput : register(u0);
 #define RADIUS 6
 
 int radialFXIndices[resolution][RADIUS];//[1500] ;// fix?
-float radialFXWeights[resolution];// [resolution] ;// fix?
+matrix radialFXWeights[resolution];// [resolution] ;// fix?
 
 void hydraulicErosion(const float erosionrate, uint3 DTid);
 float3 getGradient(float2 pos);

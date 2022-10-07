@@ -21,6 +21,8 @@
 #include "ComputeLandscape.h"
 #include "ComputeErosion.h"
 
+
+
 class App1 : public BaseApplication
 {
 public:
@@ -109,18 +111,19 @@ private:
 	bool renderLODchunks = false;
 	bool autoSmooth = true;
 	bool DepthOfField;
+	bool erosion_enabled = true;
 	//
-	float mountainPoint = 76.0;
-	float minReducedHeight = 38;
-	float maxIncreasedHeight = 180;
+	///float mountainPoint = 76.0;
+	///float minReducedHeight = 38;
+	///float maxIncreasedHeight = 180;
 	// erosion
 	int erosionRadius = 5;
 	float erosionRate = 0.4f;
 	// tessellation
-	float LODnear= 0;
-	float LODfar= 20.0;
-	int tessellationFactor =4;
-	float waterAmplitude = 1.5;
+	const float LODnear= 0;
+	const float LODfar= 20.0;
+	const int tessellationFactor =4;
+	const float waterAmplitude = 1.5;
 	//sphere
 	XMFLOAT3 testPosition = { 0,-16,0 };
 	bool gameSettingsMenuActive = false;

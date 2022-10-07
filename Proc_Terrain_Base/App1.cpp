@@ -257,11 +257,12 @@ bool App1::renderMinimap(bool erode_as_well)
 }
 bool App1::erodeTerrain()
 {
-	csErosion->setShaderParameters(renderer->getDeviceContext(), curHeightmapSRV, &vars);
-	csErosion->compute(renderer->getDeviceContext(), 80, 80, 1);
-	csErosion->unbind(renderer->getDeviceContext());
-	curHeightmapSRV= csErosion->getSRV();
-
+	if (erosion_enabled) {
+		csErosion->setShaderParameters(renderer->getDeviceContext(), curHeightmapSRV, &vars);
+		csErosion->compute(renderer->getDeviceContext(), 80, 80, 1);
+		csErosion->unbind(renderer->getDeviceContext());
+		curHeightmapSRV = csErosion->getSRV();
+	}
 	return true;
 }
 //
@@ -664,7 +665,7 @@ void App1::gui()
 		ImGui::SliderFloat("##y", &vars.seed.y, 0, 980000, "Y Offset: %.2f");		
 		
 		
-		
+		ImGui::Checkbox("Toggle Erosion", &erosion_enabled);
 	
 		if (ImGui::Button("Regenerate Terrain")) {
 			renderMinimap(false);
@@ -673,6 +674,11 @@ void App1::gui()
 		}ImGui::SameLine(); if (ImGui::Button("Both")) {
 			renderMinimap(true);
 		}
+	if (ImGui::Button("Export Terrain")) {
+		textureMgr->exportToFile(L"Exported Data/heightmap1.png", curHeightmapSRV);
+			//(,curHeightmapSRV, ,L"Exported Data/heightmap1.png")//
+
+	}
 	//	if (terrainResolution != terrains[0]->GetResolution()) {
 	//		terrains[0]->Resize(terrainResolution);
 	//	}

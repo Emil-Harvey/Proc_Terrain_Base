@@ -34,7 +34,7 @@ float4 main(InputType input) : SV_TARGET
    // textureColor.rgb += 0.19;
    // textureColor.rgb *= textureColor.rgb;
     //textureColor.b = max(textureColor.b, 0.05);
-
+    
    
         ///     Dithering Shader                                             
     //float thres = 0.5 + 0.25*noise(float2(input.tex.x*14,input.tex.y)); //0.50+ 0.25*( sin(input.tex.x*3201.32) + sin(input.tex.y*1801.18) );//0.5 * (0 + bfm(input.tex.xxyy*998.3, 13));//

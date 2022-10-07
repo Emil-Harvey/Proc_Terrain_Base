@@ -11,6 +11,7 @@
 //#include "../DirectXTK/Inc/WICTextureLoader.h"
 #include "DTK\include\DDSTextureLoader.h"
 #include "DTK\include\WICTextureLoader.h"
+#include "DTK/include/ScreenGrab11.h"
 #include <string>
 #include <fstream>
 #include <vector>
@@ -27,6 +28,8 @@ public:
 
 	void loadTexture(const wchar_t* uid, const wchar_t* filename);
 	ID3D11ShaderResourceView* getTexture(const wchar_t* uid);
+
+	void exportToFile(LPCWSTR filename, ID3D11ShaderResourceView* textureSRV);
 
 private:
 	bool does_file_exist(const wchar_t *fileName);
