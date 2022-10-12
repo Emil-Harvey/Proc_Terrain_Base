@@ -24,5 +24,7 @@ public:
 protected:
     void initShader(const wchar_t* vsFilename, const wchar_t* hsFilename, const wchar_t* dsFilename, const wchar_t* gsFilename, const wchar_t* psFilename);
 
+protected:
+	ID3D11SamplerState* heightmapSampleState;
 };
 

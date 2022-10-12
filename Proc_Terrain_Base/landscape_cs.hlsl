@@ -86,7 +86,7 @@ float NoiseTexture(float2 coords, float scale,int octs, float roughness,float di
     for (int o = 0; o < octs; o++)
     {
         int freqMultiplier = 4;//1.125;// default = 2
-        float h = perlin(scale * d_coords * pow(2, float(o))) * pow( saturate(roughness), float(o) );//
+        float h = perlin( scale * d_coords * pow(2, float(o)) ) * pow( saturate(roughness), float(o) );//
         //h *= h;
         //h *= weight;
         //weight = h;
@@ -95,12 +95,12 @@ float NoiseTexture(float2 coords, float scale,int octs, float roughness,float di
     return val; // ensure output is between 0 & 1.0
 }
 
-float invsmoothstep(float y)
+float invsmoothstep(float y)// broken
 {// fast inverse
     float yn = 2.0 * y - 1.0;
     float t = 0.45 * yn;
     t -= (t * (4.0 * t * t - 3.0) + yn) / (12.0 * t * t - 3.0);
-    return y;//t + 0.5;
+    return y;// saturate(t + 0.5);
 }
 
 
@@ -166,7 +166,7 @@ float get_alt_terrain_height(float2 input, float octaves) // a revised terrain a
         flow(input / (4900.7 * scale), 5) + (0.2 * bfm(input / (500 * scale), octaves)),
         1 * (bfm(input / (4900.7 * scale), 6) + (0.2 * bfm(input / (500 * scale), octaves))), perlin(input / (919.7 * scale)));
 
-    return ((continental_noise * height) - (3.8f*continental_noise)) * scale* 3.0;//
+    return ((continental_noise *  height) - (3.8f* continental_noise * continental_noise * continental_noise)) * scale* 3.0;//
 }
 
 
@@ -201,9 +201,9 @@ void main(int3 groupThreadID : SV_GroupThreadID,
     const float2 coords = { (dispatchThreadID.x * c) + seed.x + globalPosition.x , (dispatchThreadID.y * c) + seed.y + globalPosition.y };
     const float height = get_alt_terrain_height(coords, 20.0);
 
-    const float macroScale = 3.0;
-    const float2 macroCoords = { (((dispatchThreadID.x * c) - 5760) * macroScale) + 5760 + seed.x + globalPosition.x , (((dispatchThreadID.y * c) - 5760) * macroScale) + 5760 + seed.y + globalPosition.y };
-    const float macro_height = get_terrain_height(macroCoords, 8.0);
+    //const float macroScale = 3.0;
+    //const float2 macroCoords = { (((dispatchThreadID.x * c) - 5760) * macroScale) + 5760 + seed.x + globalPosition.x , (((dispatchThreadID.y * c) - 5760) * macroScale) + 5760 + seed.y + globalPosition.y };
+    //const float macro_height = get_terrain_height(macroCoords, 8.0);
 
     // CALCULATE NORMAL
     const float3 normal = calculateNormal(coords, 5.0); const float slope = normal.y; const float2 aspect = normal.xz;
@@ -264,7 +264,7 @@ void main(int3 groupThreadID : SV_GroupThreadID,
 	
 
     output.a = height;//40+sin(degrees(coords.y)) * 40.f;//
-    output.r = height;//humidity
+    output.r = height/(100.f*scale);//humidity
 
     output.g = slope; // / manipulationDetails.z;
     output.b = 0.5;//0.01 * height / (1+pow(manipulationDetails.z,3));

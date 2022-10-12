@@ -248,7 +248,9 @@ bool App1::renderMinimap(bool erode_as_well)
 	csLand->setShaderParameters(renderer->getDeviceContext(), curHeightmapSRV, &vars);
 	csLand->compute(renderer->getDeviceContext(), 60, 60, 1);
 	csLand->unbind(renderer->getDeviceContext());
-	curHeightmapSRV = csLand->getSRV();
+	// make a copy of the SRV to be used in the future, as the pointer may 'break'(?)
+	//auto csLandscapeSRV = *
+	curHeightmapSRV = csLand->getSRV();//&csLandscapeSRV;//
 
 	if (erode_as_well)
 		return erodeTerrain();
@@ -258,10 +260,16 @@ bool App1::renderMinimap(bool erode_as_well)
 bool App1::erodeTerrain()
 {
 	if (erosion_enabled) {
-		csErosion->setShaderParameters(renderer->getDeviceContext(), curHeightmapSRV, &vars);
+		csErosion->setShaderParameters(renderer->getDeviceContext(), curHeightmapSRV, &vars);//TODO: find out why erosion does not work on 'eroded' heightmap
 		csErosion->compute(renderer->getDeviceContext(), 80, 80, 1);
 		csErosion->unbind(renderer->getDeviceContext());
-		curHeightmapSRV = csErosion->getSRV();
+		// make a copy of the SRV to be used in the future, as the pointer may 'break'(?) //
+		///CHECK(SUCCEEDED(renderer->getDevice()->CreateShaderResourceView(mPtr, &shaderResourceViewDesc, &mSRV)));
+
+		//ID3D11ShaderResourceView csErosionSRV = ID3D11ShaderResourceView()
+		//	= *csErosion->getSRV();
+		curHeightmapSRV = csErosion->getSRV();//&csErosionSRV;//
+
 	}
 	return true;
 }

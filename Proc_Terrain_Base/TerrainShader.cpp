@@ -9,7 +9,7 @@ void TerrainShader::initShader(const wchar_t* vsFilename, const wchar_t* hsFilen
 	// InitShader must be overwritten and it will load both vertex and pixel shaders + setup buffers
 
 	D3D11_BUFFER_DESC matrixBufferDesc, lightBufferDesc, cameraBufferDesc, geoBufferDesc, chunkBufferDesc;
-	D3D11_SAMPLER_DESC samplerDesc;
+	D3D11_SAMPLER_DESC textureSamplerDesc, heightmapSamplerDesc;
 
 	//		Load (+ compile) shader files
 	loadVertexShader(vsFilename);
@@ -38,20 +38,33 @@ void TerrainShader::initShader(const wchar_t* vsFilename, const wchar_t* hsFilen
 	// Create the constant buffer pointer so we can access the vertex shader constant buffer from within this class.
 	renderer->CreateBuffer(&matrixBufferDesc, NULL, &matrixBuffer);
 
-	// Create a texture sampler state description.
-	samplerDesc.Filter = D3D11_FILTER_ANISOTROPIC; //D3D11_FILTER_MIN_MAG_MIP_POINT;//   breaks the heightmap sampler, if you want ps1 gfx, need 2 samplers
-	samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
-	samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
-	samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
-	samplerDesc.MipLODBias = 0.0f;
-	samplerDesc.MaxAnisotropy = 1;
-	samplerDesc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
-	samplerDesc.MinLOD = 0;
-	samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
+	// Create a heightmap sampler state description.
+	heightmapSamplerDesc.Filter = D3D11_FILTER_ANISOTROPIC; // heightmap must have good filtering to avoid blocky terrain
+	heightmapSamplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+	heightmapSamplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+	heightmapSamplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+	heightmapSamplerDesc.MipLODBias = 0.0f;
+	heightmapSamplerDesc.MaxAnisotropy = 1;
+	heightmapSamplerDesc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
+	heightmapSamplerDesc.MinLOD = 0;
+	heightmapSamplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
 
 	// Create the texture sampler state.
-	renderer->CreateSamplerState(&samplerDesc, &sampleState);
+	renderer->CreateSamplerState(&heightmapSamplerDesc, &heightmapSampleState);
 
+	// Create a texture sampler state description.
+	textureSamplerDesc.Filter = D3D11_FILTER_ANISOTROPIC; //D3D11_FILTER_MIN_MAG_MIP_POINT;
+	textureSamplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+	textureSamplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+	textureSamplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+	textureSamplerDesc.MipLODBias = 0.0f;
+	textureSamplerDesc.MaxAnisotropy = 1;
+	textureSamplerDesc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
+	textureSamplerDesc.MinLOD = 0;
+	textureSamplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
+
+	// Create the texture sampler state.
+	renderer->CreateSamplerState(&textureSamplerDesc, &sampleState);
 
 	// tess buffer!
 	chunkBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
@@ -160,7 +173,7 @@ void TerrainShader::setShaderParameters(ID3D11DeviceContext* deviceContext, cons
 
 	/// set shader resources for DS
 	deviceContext->DSSetShaderResources(0, 1, &heightmap);
-	deviceContext->DSSetSamplers(0, 1, &sampleState);
+	deviceContext->DSSetSamplers(0, 1, &heightmapSampleState);
 
 	/// Set shader texture resource in the pixel shader.
 	//for (int i = 1; i < 36; i++) {
