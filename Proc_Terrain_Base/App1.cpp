@@ -21,7 +21,8 @@ App1::App1()
 	x_Terrain = nullptr;
 	z_Terrain = nullptr;
 	xz_Terrain = nullptr;
-	far_Terrain = nullptr;
+	///far_Terrain = nullptr;
+	//qt_Terrain = nullptr;
 	m_clouds = nullptr;
 	f_Terrain = nullptr;
 	sun_mesh = nullptr;
@@ -38,11 +39,7 @@ void App1::init(HINSTANCE hinstance, HWND hwnd, int screenWidth, int screenHeigh
 	initTextures();
 
 	/// Create Mesh object and shader objects
-		// Create geometry object
-	//terrains[0] = new TerrainMesh(renderer->getDevice(), renderer->getDeviceContext(), terrainResolution, 400, {-200,-200});// central chunk
-	//
-	//terrains[0]->initRadialEffect(erosionRadius);
-	
+		
 	m_Water = new TessellationPlane(renderer->getDevice(), renderer->getDeviceContext(), Water_Mesh_Res);
 	sun_mesh = new SphereMesh(renderer->getDevice(), renderer->getDeviceContext(), 10);
 	sky_sphere = new SphereMesh(renderer->getDevice(), renderer->getDeviceContext(), 8);
@@ -55,7 +52,7 @@ void App1::init(HINSTANCE hinstance, HWND hwnd, int screenWidth, int screenHeigh
 	terrainShader = new TerrainShader(renderer->getDevice(), hwnd);
 	horBlur = new ComputeBlurHor(renderer->getDevice(), hwnd, screenWidth, screenHeight);
 	verBlur = new ComputeBlurVert(renderer->getDevice(), hwnd, screenWidth, screenHeight);
-	csLand = new ComputeLandscape(renderer->getDevice(), hwnd, 1500, 1500);
+	csLand = new ComputeLandscape(renderer->getDevice(), hwnd, 1600, 1600);
 	csErosion = new ComputeErosion(renderer->getDevice(), hwnd, 1500, 1500);
 
 	
@@ -70,11 +67,14 @@ void App1::init(HINSTANCE hinstance, HWND hwnd, int screenWidth, int screenHeigh
 	preDOFRT = new RenderTexture(renderer->getDevice(), screenWidth, screenHeight, /*400,300,*/ 0.1f, 200.f);
 	cameraDepth = new ShadowMap(renderer->getDevice(), screenWidth, screenHeight);
 
+	/// Terrain stuff
+
 	m_Terrain = new TessellationPlane(renderer->getDevice(), renderer->getDeviceContext(), terrainResolution);
 	x_Terrain = new TessellationPlane(renderer->getDevice(), renderer->getDeviceContext(), terrainResolution);
 	z_Terrain = new TessellationPlane(renderer->getDevice(), renderer->getDeviceContext(), terrainResolution);
 	xz_Terrain = new TessellationPlane(renderer->getDevice(), renderer->getDeviceContext(), terrainResolution);
-	far_Terrain = new TessellationPlane(renderer->getDevice(), renderer->getDeviceContext(), terrainResolution);
+	///far_Terrain = new TessellationPlane(renderer->getDevice(), renderer->getDeviceContext(), terrainResolution);
+	qt_Terrain = new QuadTreeMesh(renderer->getDevice(), renderer->getDeviceContext(), { 0.0,0.0 }, 100.0, 3);
 
 	f_Terrain = new PlaneMesh(renderer->getDevice(), renderer->getDeviceContext(), 280);
 
@@ -246,7 +246,7 @@ bool App1::render()
 bool App1::renderMinimap(bool erode_as_well)
 {
 	csLand->setShaderParameters(renderer->getDeviceContext(), curHeightmapSRV, &vars);
-	csLand->compute(renderer->getDeviceContext(), 60, 60, 1);
+	csLand->compute(renderer->getDeviceContext(), 200, 200, 1);
 	csLand->unbind(renderer->getDeviceContext());
 	// make a copy of the SRV to be used in the future, as the pointer may 'break'(?)
 	//auto csLandscapeSRV = *
@@ -377,7 +377,7 @@ void App1::firstPass()
 
 
 	////////
-	float lengthOfDay = -1 * cos(vars.TimeOfYear / 57.29577);// replace -6 [-1] w/ -12*sin(latitude)  <--- to be moved to PS?
+	float lengthOfDay = -12 * sin(vars.GlobalPosition.y) * cos(vars.TimeOfYear / 57.29577);// replace -6 [-1] w/ -12*sin(latitude)  <--- to be moved to PS?
 ///
 	float sunAltitude = lengthOfDay - (cos(time / 3.81) / 0.8);// necessary for sun mesh position
 
@@ -416,7 +416,7 @@ void App1::firstPass()
 	//*/
 	renderer->setZBuffer(true);
 
-	
+	///qt_Terrain->Render(renderer->getDeviceContext(), terrainShader, XMMatrixMultiply(worldMatrix, m_TerrainMatrix), viewMatrix, projectionMatrix, textures, light, camera, &vars, curHeightmapSRV);
 
 	/// main terrain
 	m_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);//													
@@ -455,7 +455,7 @@ void App1::firstPass()
 		camera->setPosition(camera->getPosition().x, camera->getPosition().y, camera->getPosition().z - chunk);
 		renderMinimap();
 	}
-	
+	//*
 	const XMMATRIX xPositionMatrix = XMMatrixTranslation(xz_TerrainMeshOffset * 3, 0.0, xz_TerrainMeshOffset);// 
 	const XMMATRIX zPositionMatrix = XMMatrixTranslation(xz_TerrainMeshOffset, 0.0, xz_TerrainMeshOffset * 3);// 
 	const XMMATRIX xzPositionMatrix = XMMatrixTranslation(xz_TerrainMeshOffset * 3, 0.0, xz_TerrainMeshOffset * 3);
@@ -509,40 +509,7 @@ void App1::firstPass()
 	xz_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
 	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, curHeightmapSRV);
 	terrainShader->render(renderer->getDeviceContext(), xz_Terrain->getIndexCount());
-
-	// render 6 far_terrains. messy temporary code.
-	// -x 0y; -x y; 0x y; x y; x 0y.
-	//const XMMATRIX farX_PositionMatrix = XMMatrixTranslation(xz_TerrainMeshOffset * 3, 0.0, xz_TerrainMeshOffset);// 
-/*	neighbourWorldMatrix = XMMatrixMultiply(worldMatrix, XMMatrixMultiply(XMMatrixMultiply(terrainScaleMatrix, xPositionMatrix), XMMatrixScaling(3.0, 1.0, 3.0)));
-	far_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
-	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csLand->getSRV());
-	terrainShader->render(renderer->getDeviceContext(), xz_Terrain->getIndexCount());
-
-	neighbourWorldMatrix = XMMatrixMultiply(worldMatrix, XMMatrixMultiply(XMMatrixMultiply(terrainScaleMatrix, xzPositionMatrix),XMMatrixScaling(3.0, 1.0, 3.0) ));
-	far_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
-	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csLand->getSRV());
-	terrainShader->render(renderer->getDeviceContext(), xz_Terrain->getIndexCount());
-
-	neighbourWorldMatrix = XMMatrixMultiply(worldMatrix, XMMatrixMultiply(XMMatrixMultiply(terrainScaleMatrix, zPositionMatrix), XMMatrixScaling(3.0, 1.0, 3.0)));
-	far_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
-	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csLand->getSRV());
-	terrainShader->render(renderer->getDeviceContext(), xz_Terrain->getIndexCount());
-
-	neighbourWorldMatrix = XMMatrixMultiply(worldMatrix, XMMatrixMultiply(XMMatrixMultiply(terrainScaleMatrix, xz2PositionMatrix),XMMatrixScaling(3.0, 1.0, 3.0) ));
-	far_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
-	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csLand->getSRV());
-	terrainShader->render(renderer->getDeviceContext(), xz_Terrain->getIndexCount());
-
-	neighbourWorldMatrix = XMMatrixMultiply(worldMatrix, XMMatrixMultiply(XMMatrixMultiply(terrainScaleMatrix, x2PositionMatrix),XMMatrixScaling(3.0, 1.0, 3.0) ));
-	far_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
-	terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csLand->getSRV());
-	terrainShader->render(renderer->getDeviceContext(), xz_Terrain->getIndexCount());
-
-	////neighbourWorldMatrix = XMMatrixMultiply(worldMatrix, XMMatrixMultiply(XMMatrixScaling(3.0, 1.0, 3.0), XMMatrixMultiply(terrainScaleMatrix, xz4PositionMatrix)));
-	////far_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
-	////terrainShader->setShaderParameters(renderer->getDeviceContext(), neighbourWorldMatrix, viewMatrix, projectionMatrix, textures, light, camera, &vars, csLand->getSRV());
-	////terrainShader->render(renderer->getDeviceContext(), xz_Terrain->getIndexCount());
-*/
+//*/
 	/*			Back Face Culling
 	
 	D3D11_RASTERIZER_DESC wfdesc;

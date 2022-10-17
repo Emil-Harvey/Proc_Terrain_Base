@@ -40,9 +40,13 @@ void TerrainShader::initShader(const wchar_t* vsFilename, const wchar_t* hsFilen
 
 	// Create a heightmap sampler state description.
 	heightmapSamplerDesc.Filter = D3D11_FILTER_ANISOTROPIC; // heightmap must have good filtering to avoid blocky terrain
-	heightmapSamplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
-	heightmapSamplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
-	heightmapSamplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+	heightmapSamplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_BORDER;//D3D11_TEXTURE_ADDRESS_CLAMP;
+	heightmapSamplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_BORDER;//D3D11_TEXTURE_ADDRESS_CLAMP;
+	heightmapSamplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_BORDER;//D3D11_TEXTURE_ADDRESS_CLAMP;
+	heightmapSamplerDesc.BorderColor[0] = -10.0f;
+	heightmapSamplerDesc.BorderColor[1] = -10.0f;
+	heightmapSamplerDesc.BorderColor[2] = -10.0f;
+	heightmapSamplerDesc.BorderColor[3] = -10.0f;
 	heightmapSamplerDesc.MipLODBias = 0.0f;
 	heightmapSamplerDesc.MaxAnisotropy = 1;
 	heightmapSamplerDesc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
@@ -94,7 +98,7 @@ void TerrainShader::initShader(const wchar_t* vsFilename, const wchar_t* hsFilen
 	renderer->CreateBuffer(&cameraBufferDesc, NULL, &cameraBuffer);
 
 }
-void TerrainShader::setShaderParameters(ID3D11DeviceContext* deviceContext, const XMMATRIX& world, const XMMATRIX& view, const XMMATRIX& projection, ID3D11ShaderResourceView** textures, Light* light, FPCamera* camera, ShaderVariables* SVars, ID3D11ShaderResourceView* heightmap)//XMFLOAT4 TD, float scale, XMFLOAT2 n_Offset, float timeOfYear)
+void TerrainShader::setShaderParameters(ID3D11DeviceContext* deviceContext, const XMMATRIX& world, const XMMATRIX& view, const XMMATRIX& projection, ID3D11ShaderResourceView** textures, Light* light, FPCamera* camera, ShaderVariables* SVars, ID3D11ShaderResourceView* heightmap)
 {
 	HRESULT result;
 	D3D11_MAPPED_SUBRESOURCE mappedResource;

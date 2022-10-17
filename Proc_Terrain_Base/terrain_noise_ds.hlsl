@@ -241,7 +241,7 @@ OutputType main(ConstantOutputType input, float2 uvwCoord : SV_DomainLocation, c
     output.snowness = pow(saturate(0.5 / scale * (0.2 * altitude - 7.1181*bfm(seedc.xz / (scale * 20), 3) - snowline)), 3.0 );
     //  apply deep snow effect on flat ground (raise vertices)
     output.world_position.y += max(output.snowness * output.steepness - 0.5, 0) * scale;
-    /*DEBUG: */output.snowness = HEIGHT.SampleLevel(s0, (output.world_position.zx / 11520.0) + 0.5, 0).b;//heightmapSampled.b;
+    /*DEBUG: output.snowness = HEIGHT.SampleLevel(s0, (output.world_position.zx / 11520.0) + 0.5, 0).b;//heightmapSampled.b;*/
     // absolute humidity - relative humidity is less meaningful///          <-- fix this algorithm?
     /*output.humidity =
         ((output.temperature - minGlobalTemp) * 0.02// rep 1* w abs

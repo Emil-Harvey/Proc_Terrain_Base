@@ -190,8 +190,14 @@
     <ClCompile Include="LightShader.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="Noise.cpp" />
-    <ClCompile Include="QuadTreeClass.cpp" />
-    <ClCompile Include="QuadTreeMesh.cpp" />
+    <ClCompile Include="QuadTreeClass.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="QuadTreeMesh.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="TerrainMesh.cpp" />
     <ClCompile Include="TerrainShader.cpp" />
     <ClCompile Include="TessellationPlane.cpp" />
@@ -217,8 +223,14 @@
     <ClInclude Include="Grower.h" />
     <ClInclude Include="LightShader.h" />
     <ClInclude Include="Noise.h" />
-    <ClInclude Include="QuadTreeClass.h" />
-    <ClInclude Include="QuadTreeMesh.h" />
+    <ClInclude Include="QuadTreeClass.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </ClInclude>
+    <ClInclude Include="QuadTreeMesh.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
+    </ClInclude>
     <ClInclude Include="ShaderVariables.h" />
     <ClInclude Include="TerrainMesh.h" />
     <ClInclude Include="TerrainShader.h" />

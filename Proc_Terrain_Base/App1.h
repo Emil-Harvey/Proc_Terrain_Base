@@ -20,7 +20,7 @@
 #include "ComputeBlurVert.h"
 #include "ComputeLandscape.h"
 #include "ComputeErosion.h"
-
+#include "QuadTreeMesh.h"//"QuadTreeClass.h"
 
 
 class App1 : public BaseApplication
@@ -72,9 +72,10 @@ private:
 	TessellationPlane* x_Terrain;// neighbour terrain on the x axis (+ or -)
 	TessellationPlane* z_Terrain;// neighbour on the z axis (north/south)
 	TessellationPlane* xz_Terrain;// diagonal neighbour 
-	const float xz_TerrainMeshOffset = -1920;//	(half of terrain width - 1920 @ 16 res): 3840x3 = 11520 
+	const float xz_TerrainMeshOffset = -1920*1;//	(half of terrain width - 1920 @ 16 res): 3840x3 = 11520 
 
-	TessellationPlane* far_Terrain;// this will be 3x the size
+	///TessellationPlane* far_Terrain;// this will be 3x the size
+	QuadTreeMesh* qt_Terrain;//QuadTreePlane* qt_Terrain;
 
 	TessellationPlane* m_Water;
 	PlaneMesh* m_clouds;
@@ -93,12 +94,12 @@ private:
 	ID3D11ShaderResourceView* macroTexture;
 
 	// terrain gen 
-	int terrainResolution = 16;
+	const int terrainResolution = 16;
 	int octaves = 3;
-	float xOffset = 640;
-	float yOffset = 640;
-	float scale = 1;
-	float height = 1;
+	//float xOffset = 640;
+	//float yOffset = 640;
+	//float scale = 1;
+	//float height = 1;
 	// misc
 	float test = 0.1;
 	// TOD sim
@@ -109,9 +110,9 @@ private:
 	// bools
 	bool floraOn = false;
 	bool renderLODchunks = false;
-	bool autoSmooth = true;
+	//bool autoSmooth = true;
 	bool DepthOfField;
-	bool erosion_enabled = true;
+	bool erosion_enabled = false;
 	//
 	///float mountainPoint = 76.0;
 	///float minReducedHeight = 38;

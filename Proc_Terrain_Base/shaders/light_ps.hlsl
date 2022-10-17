@@ -264,8 +264,8 @@ float3 calculateNormals(float2 tex, Texture2D heightMap)
 float4 main(InputType input) : SV_TARGET
 {
     float dist = length(input.world_position.xz - viewpos.xz);// nice little dither fade of render distance
-    const float clip_near = 4000.0;
-    const float fade_dist = 1500.0;
+    const float clip_near = 24000.0;
+    const float fade_dist = 4500.0;
     clip(dist > clip_near ? ((clip_near+ fade_dist -dist)/ fade_dist) + (((input.position.x % 2.5) - 1.25) * ((input.position.y % 2.5) - 1.25)) : 1);
 
     //const float PI180 = 57.29577;
@@ -322,25 +322,25 @@ float4 main(InputType input) : SV_TARGET
         //textureShine =  sWater.Sample(s0, input.tex * 15000);
     }
     else // not water
-    {// try simplifying biome texturing by ruling out pure biome areas from mixing textures
+    {// blend the textures based on biome parameters, and using the heightmap of each texture (height blend) for more realistic texturing
         float aridness = ((input.temperature + 17.0) / 45.0) * (1.0-input.humidity);
-        // blend the textures based on biome parameters, and using the heightmap of each texture (height blend) for more realistic texturing
+        // try simplifying biome texturing by ruling out pure biome areas from mixing textures
         if (input.steepness <= 0.1) {
             textureColour = Tex(cliff.albedo_specular, uv);//float4( 0.0,0.0,0.9,1.0 );//
             textureNormal = Tex(cliff.normal_height, uv);
         }
-        else if (input.steepness >= 0.9 && input.snowness >= 0.9) {
+        else if (input.steepness >= 0.95 && input.snowness >= 0.9) {
             textureColour = Tex(snow.albedo_specular, uv);//float4(0.0, 0.5, 0.9, 1.0);
             textureNormal = Tex(snow.normal_height, uv);
         
         }
-        else if (input.beachness <= 0.1 && input.noise >= 1) {
+        else if (input.steepness >= 0.95 && input.beachness <= 0.1 && input.noise >= 1) {
             
             textureColour = Tex(sand.albedo_specular, uv);
             textureNormal = Tex(sand.normal_height, uv);
             
         }
-        else if (aridness >= 1 && input.temperature / 22.4 >= 1) {
+        else if (input.steepness >= 0.95 && aridness >= 1 && input.temperature / 22.4 >= 1) {
             textureColour = Tex(savan.albedo_specular, uv);
             textureNormal = Tex(savan.normal_height, uv);
         }
@@ -350,7 +350,7 @@ float4 main(InputType input) : SV_TARGET
        // }
         else {
             //  // ((rock or cliff,a,b) or (snow or ((sand or gravel,a,b) or (grass or grass2,a,b),a,b),a,b),a,b) 
-            currentMat = heightBlend( heightBlend(heightBlend(heightBlend(stone, sand, input.noise, uv), heightBlend(heightBlend(grass2, grass, input.noise2, uv), heightBlend(rock, grass, input.temperature / 22.4, uv), 1-aridness, uv), input.beachness, uv), snow, input.snowness, uv), cliff, 1- input.steepness, uv);
+            currentMat = heightBlend( heightBlend(heightBlend(heightBlend(stone, sand, input.noise, uv), heightBlend(heightBlend(grass2, grass, input.noise2, uv), heightBlend(rock, savan, input.temperature / 22.4, uv), aridness, uv), input.beachness, uv), snow, input.snowness, uv), cliff, 1- input.steepness, uv);
             //currentMat = heightBlend(savan,grass2 , input.temperature / 22.4, uv);
 
             textureColour = currentMat.albedo_specular; //float4(snowness, snowness, snowness, 1.0); //
@@ -367,10 +367,10 @@ float4 main(InputType input) : SV_TARGET
     lightColour = calculateLighting(-sunlight.direction, input.normal + textureNormal.xyz, sunlight.colour);//calculateLighting(-lightDirection, input.normal + textureNormal, diffuseColour); 
     
      //add wetness effects at beach
-    if (altitude <= 0.2)
+    if (false &&altitude <= 0.2)
     {
         float depth = abs(altitude - 0.2);
-            textureColour.rgb = pow(textureColour.rgb, min(1 + depth * 2.0, 3.0));//  wetness    
+        textureColour.rgb = pow(textureColour.rgb, min(1 + depth * 2.0, 3.0));//  wetness    
         //textureColour.rgb /= min(1 + depth, 3.0); //darkness. at altitudes > beachline we / by 1 [no change]
         //textureShine.r *= min(1 + depth, 2.3);
         

@@ -160,7 +160,7 @@ void TextureManager::exportToFile(LPCWSTR filename, ID3D11ShaderResourceView* te
 	
 	/// TODO: Make RGBA pixel format work ^ 
 	HRESULT result;
-	result = SaveWICTextureToFile(deviceContext, textureInterface, GUID_ContainerFormatPng, filename, &GUID_WICPixelFormat128bppRGBAFloat);//
+	result = SaveWICTextureToFile(deviceContext, textureInterface, GUID_ContainerFormatPng, filename);//, &GUID_WICPixelFormat128bppRGBAFloat);//
 
 	if (FAILED(result))
 	{

@@ -16,7 +16,7 @@ cbuffer DataBuffer : register(b0)
 Texture2D gInput : register(t0);
 RWTexture2D<float4> gOutput : register(u0);
 
-#define N 25 //256
+#define N 8 //256
 //#define CacheSize (N + 2*gBlurRadius)
 //groupshared float4 gCache[CacheSize];
 
@@ -166,7 +166,8 @@ float get_alt_terrain_height(float2 input, float octaves) // a revised terrain a
         flow(input / (4900.7 * scale), 5) + (0.2 * bfm(input / (500 * scale), octaves)),
         1 * (bfm(input / (4900.7 * scale), 6) + (0.2 * bfm(input / (500 * scale), octaves))), perlin(input / (919.7 * scale)));
 
-    return ((continental_noise *  height) - (3.8f* continental_noise * continental_noise * continental_noise)) * scale* 3.0;//
+    height = ((continental_noise * height) - (3.8f * continental_noise * continental_noise * continental_noise)) * scale * 3.0;
+    return height*(max(height,1.0)/(scale*scale));//
 }
 
 
