@@ -264,8 +264,8 @@ float3 calculateNormals(float2 tex, Texture2D heightMap)
 float4 main(InputType input) : SV_TARGET
 {
     float dist = length(input.world_position.xz - viewpos.xz);// nice little dither fade of render distance
-    const float clip_near = 24000.0;
-    const float fade_dist = 4500.0;
+    const float clip_near = 3000.0;
+    const float fade_dist = 1500.0;
     clip(dist > clip_near ? ((clip_near+ fade_dist -dist)/ fade_dist) + (((input.position.x % 2.5) - 1.25) * ((input.position.y % 2.5) - 1.25)) : 1);
 
     //const float PI180 = 57.29577;
@@ -426,7 +426,7 @@ float4 main(InputType input) : SV_TARGET
     float3 view = normalize(viewpos - input.world_position.xyz);
     
     //textureColour.r = input.humidity; //input.wind.x;//temperature / 36.6; //
-    //textureColour.g = 0.0; //cos(input.temperature / 15); //snowness; //wind.x;//
+    //textureColour.g = cos(input.temperature / 15); //0.0; //snowness; //wind.x;//
     //textureColour.b = input.temperature / -37.0; //wind.y;//
     float4 pixelColour = float4( textureColour.xyz * (lightColour.xyz + sunlight.ambient.xyz) + (sunlight.colour.xyz * textureColour.a * calculateSpecular(-sunlight.direction, input.normal , sunlight.colour, view)), 1.0);//+ textureNormal.xyz
     pixelColour.a = 1.0;

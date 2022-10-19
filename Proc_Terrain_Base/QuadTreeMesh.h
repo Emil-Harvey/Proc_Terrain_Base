@@ -22,7 +22,7 @@ class QuadTreeMesh :
         southwest = 3  // -X, -Y    | true, true;   11
     };
     class QuadtreeNode {
-        XMFLOAT2 position; //float3?
+        XMFLOAT2 position;
         float size;
         QuadtreeNode* subNodes[4] = { NULL };
         TessellationPlane* geometry = nullptr;
@@ -52,9 +52,10 @@ class QuadTreeMesh :
 
         float Size() { return size; }
 
-        void subdivide(ID3D11Device* d, ID3D11DeviceContext* dc, int depth = 0)
+        void subdivide(ID3D11Device* d, ID3D11DeviceContext* dc, XMFLOAT2 targetPosition, int depth = 0)
         {
-            //subNodes = &new QuadtreeNode[4];//?
+            //subNodes = new QuadtreeNode[4];//?
+            QuadtreeIndex indexToSubdivide = getIndexOfPosition(targetPosition, position);
             for (int i=0; i< 4; ++i)
             {
                 XMFLOAT2 newPos = position;
@@ -70,8 +71,8 @@ class QuadTreeMesh :
                     newPos.y += size * 0.25;
 
                 subNodes[i] = new QuadtreeNode(d, dc, newPos, size / 2.f);
-                if (depth > 0)
-                    subNodes[i]->subdivide(d,dc, depth - 1);
+                if (depth > 0 && indexToSubdivide == i)
+                    subNodes[i]->subdivide(d,dc, targetPosition, depth - 1);
             }
         }
 
@@ -79,7 +80,7 @@ class QuadTreeMesh :
 
         void render(ID3D11DeviceContext* dc, TerrainShader* shader, const XMMATRIX& world, const XMMATRIX& view, const XMMATRIX& projection, ID3D11ShaderResourceView** textures, Light* light, FPCamera* camera, ShaderVariables* SVars, ID3D11ShaderResourceView* heightmap)
         {
-            if (!subNodes == NULL)
+            if (!(isLeaf() || subNodes[0] == NULL))
             {/// Recursively render all subnodes - only if they are leafs 
                 for (int i = 0; i < 4; i++) {
                     subNodes[i]->render(dc, shader, world, view, projection, textures, light, camera, SVars, heightmap);
@@ -91,21 +92,21 @@ class QuadTreeMesh :
                 const XMMATRIX scaleMatrix = XMMatrixScaling(size, 1.0, size);
                 const XMMATRIX transformMatrix = XMMatrixMultiply(scaleMatrix, positionMatrix);
                 geometry->sendData(dc, D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
-                shader->setShaderParameters(dc, XMMatrixMultiply(world, transformMatrix), view, projection, textures, light,  camera, SVars, heightmap);
+                shader->setShaderParameters(dc, XMMatrixMultiply(transformMatrix,world), view, projection, textures, light,  camera, SVars, heightmap);
                 shader->render(dc, geometry->getIndexCount());
             }
         }
     };
-
+///============================================================
 
 public:
 
-    QuadTreeMesh(ID3D11Device*, ID3D11DeviceContext*, int sivisLevel = 0);
-    QuadTreeMesh(ID3D11Device* device, ID3D11DeviceContext* deviceContext, XMFLOAT2 position, float size, int depth) 
+    //QuadTreeMesh(ID3D11Device*, ID3D11DeviceContext*, int sivisLevel = 0);
+    QuadTreeMesh(ID3D11Device* device, ID3D11DeviceContext* deviceContext, XMFLOAT2 position, float size, int depth, XMFLOAT2 position_of_detail)
         : TessellationMesh(device, deviceContext)
     {
         Root = new QuadtreeNode(device, deviceContext, position, size);
-        Root->subdivide(device, deviceContext, depth);
+        Root->subdivide(device, deviceContext, position_of_detail, depth);
     }
     ~QuadTreeMesh();
 
@@ -119,24 +120,31 @@ private:
 
     //XMFLOAT3* POD; // Position of Detail
 
-///-----------------------------------------------------------
+///------------------------------------------------------------
 
 public:
     QuadtreeNode* getRoot() {
         return Root;
     }
-    //render()
+    void render(ID3D11DeviceContext* dc, TerrainShader* shader, const XMMATRIX& world, const XMMATRIX& view, const XMMATRIX& projection, ID3D11ShaderResourceView** textures, Light* light, FPCamera* camera, ShaderVariables* SVars, ID3D11ShaderResourceView* heightmap)
+    {
 
-private:
-    int getIndexOfPosition(XMFLOAT2 lookupPosition, XMFLOAT2 nodePosition) 
+        if (Root)
+            Root->render(dc, shader, world, view, projection, textures, light, camera, SVars, heightmap);
+    }
+
+    static QuadtreeIndex getIndexOfPosition(XMFLOAT2 lookupPosition, XMFLOAT2 nodePosition)
     {
         int index = 0;
         // see definition of QuadtreeIndex
-        index |= lookupPosition.x > nodePosition.x ? 1 : 0;
-        index |= lookupPosition.y > nodePosition.y ? 2 : 0;
+        index |= lookupPosition.x < nodePosition.x ? 2 : 0;
+        index |= lookupPosition.y < nodePosition.y ? 1 : 0;
 
-        return index;
+        return QuadtreeIndex(index);
     }
+
+private:
+    
 
 };
 

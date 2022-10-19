@@ -118,7 +118,7 @@ void TerrainShader::setShaderParameters(ID3D11DeviceContext* deviceContext, cons
 	dataPtr->projection = tproj;
 	deviceContext->Unmap(matrixBuffer, 0);
 	deviceContext->VSSetConstantBuffers(0, 1, &matrixBuffer);
-	deviceContext->DSSetConstantBuffers(2, 1, &matrixBuffer);
+	//deviceContext->DSSetConstantBuffers(2, 1, &matrixBuffer);
 	deviceContext->DSSetConstantBuffers(0, 1, &matrixBuffer);// DS 0
 
 	//Additional

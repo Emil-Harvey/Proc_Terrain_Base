@@ -1,5 +1,5 @@
 #pragma once
-class ShaderVariables
+static class ShaderVariables
 {
 public:
 	XMMATRIX* World_M = nullptr;

@@ -74,7 +74,6 @@ void App1::init(HINSTANCE hinstance, HWND hwnd, int screenWidth, int screenHeigh
 	z_Terrain = new TessellationPlane(renderer->getDevice(), renderer->getDeviceContext(), terrainResolution);
 	xz_Terrain = new TessellationPlane(renderer->getDevice(), renderer->getDeviceContext(), terrainResolution);
 	///far_Terrain = new TessellationPlane(renderer->getDevice(), renderer->getDeviceContext(), terrainResolution);
-	qt_Terrain = new QuadTreeMesh(renderer->getDevice(), renderer->getDeviceContext(), { 0.0,0.0 }, 100.0, 3);
 
 	f_Terrain = new PlaneMesh(renderer->getDevice(), renderer->getDeviceContext(), 280);
 
@@ -416,12 +415,14 @@ void App1::firstPass()
 	//*/
 	renderer->setZBuffer(true);
 
-	///qt_Terrain->Render(renderer->getDeviceContext(), terrainShader, XMMatrixMultiply(worldMatrix, m_TerrainMatrix), viewMatrix, projectionMatrix, textures, light, camera, &vars, curHeightmapSRV);
+	XMFLOAT2 camera_xz = { camera->getPosition().x, camera->getPosition().z };
+	qt_Terrain = new QuadTreeMesh(renderer->getDevice(), renderer->getDeviceContext(), { 0.0,0.0 }, 10000.0, 4, camera_xz);
+	qt_Terrain->render(renderer->getDeviceContext(), terrainShader, worldMatrix /*XMMatrixMultiply(worldMatrix, m_TerrainMatrix)*/, viewMatrix, projectionMatrix, textures, light, camera, &vars, curHeightmapSRV);
 
 	/// main terrain
-	m_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);//													
-	terrainShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(worldMatrix, m_TerrainMatrix), viewMatrix, projectionMatrix, textures, light, camera, &vars, curHeightmapSRV);// XMFLOAT4(tessellationFactor, height * 100, LODnear, LODfar), scale, XMFLOAT2(xOffset, yOffset), timeOfYear);
-	terrainShader->render(renderer->getDeviceContext(), m_Terrain->getIndexCount());
+//	m_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);//													
+//	terrainShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(worldMatrix, m_TerrainMatrix), viewMatrix, projectionMatrix, textures, light, camera, &vars, curHeightmapSRV);// XMFLOAT4(tessellationFactor, height * 100, LODnear, LODfar), scale, XMFLOAT2(xOffset, yOffset), timeOfYear);
+//	terrainShader->render(renderer->getDeviceContext(), m_Terrain->getIndexCount());
 
 	
 	/// neighbouring terrains
@@ -455,7 +456,7 @@ void App1::firstPass()
 		camera->setPosition(camera->getPosition().x, camera->getPosition().y, camera->getPosition().z - chunk);
 		renderMinimap();
 	}
-	//*
+	/*
 	const XMMATRIX xPositionMatrix = XMMatrixTranslation(xz_TerrainMeshOffset * 3, 0.0, xz_TerrainMeshOffset);// 
 	const XMMATRIX zPositionMatrix = XMMatrixTranslation(xz_TerrainMeshOffset, 0.0, xz_TerrainMeshOffset * 3);// 
 	const XMMATRIX xzPositionMatrix = XMMatrixTranslation(xz_TerrainMeshOffset * 3, 0.0, xz_TerrainMeshOffset * 3);
@@ -560,7 +561,7 @@ void App1::firstPass()
 
 	renderer->setAlphaBlending(false);
 	
-
+	 
 
 	// Set back buffer as render target and reset view port.
 	renderer->setBackBufferRenderTarget();

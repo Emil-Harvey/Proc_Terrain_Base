@@ -139,35 +139,38 @@ float get_alt_terrain_height(float2 input, float octaves) // a revised terrain a
     const float scale_coeff = scale * 30.0;
 
     // to start, get some noise that will be used to vary how rough the noises are and much they are distorted.
-    const float roughness_noise = saturate(0.4+0.4 * NoiseTexture(input, 0.16/ scale_coeff, 5, 0.5, 1.5));//bfm(input / scale_coeff,15 );//
+    const float roughness_noise = saturate(0.4 +0.4 * NoiseTexture(input, 0.16/ scale_coeff, 5, 0.5, 1.5));//bfm(input / scale_coeff,15 );//
     const float distortion_noise = saturate(0.5 + 0.6 * NoiseTexture(alt_input, 0.16 / scale_coeff, 5, 0.5, 0.5));
 
     const float mountain_noise = 1.0-abs(2.0 * NoiseTexture(input, 3.6 / scale_coeff, 8, roughness_noise, distortion_noise));// 
     const float valley_noise = abs(2.0 * NoiseTexture(alt_input, 3.6 / scale_coeff, 8, roughness_noise, distortion_noise));//0.5+0.5*
-
     height = mountain_noise * valley_noise;//
     
-    const float macro_vary_noise = NoiseTexture(alt_input, 0.66 / scale_coeff, 7, roughness_noise, distortion_noise);
+    const float continental_noise = lerp(
+        flow(input / (4900.7 * scale), 5) + (0.2 * bfm(input / (500 * scale), octaves)),
+        1 * (bfm(input / (4900.7 * scale), 6) + (0.2 * bfm(input / (500 * scale), octaves))), perlin(input / (919.7 * scale)));
+
+    // the lower this value (0.0), the more 'marbled' the terrain, creating swirly rivers and archipelagos;
+    // the higher the value (1.0), the more regular the terrain, far fewer islands or river deltas.
+    // low values -> western scotland; high values -> east coast scotland. 
+    const float macro_vary_noise = saturate(1.f+NoiseTexture(alt_input, 0.66 / scale_coeff, 7, roughness_noise, distortion_noise)- (1.0*continental_noise));
 
     height = /*smooth*/max(macro_vary_noise + height, macro_vary_noise * height);
 
     // APPLY SCALING/SMOOTHING (inv sm. step)...
-    // make sure height is centred on 0
+   
     height = invsmoothstep(-0.25+(1.0* height))-0.10;
-    //return height * 10 * scale;
-    float subcontinent_noise = NoiseTexture(input, 0.6 / scale_coeff, 8, 0.59589, min(distortion_noise,0.7));
+    
+    float subcontinent_noise = -0.15+NoiseTexture(input, 0.6 / scale_coeff, 8, 0.59589, min(distortion_noise,0.7));
 
     height *= 59.8 ;
     subcontinent_noise *= 53.4 ;
 
     height += subcontinent_noise;
     //...
-    const float continental_noise = lerp(
-        flow(input / (4900.7 * scale), 5) + (0.2 * bfm(input / (500 * scale), octaves)),
-        1 * (bfm(input / (4900.7 * scale), 6) + (0.2 * bfm(input / (500 * scale), octaves))), perlin(input / (919.7 * scale)));
-
+    
     height = ((continental_noise * height) - (3.8f * continental_noise * continental_noise * continental_noise)) * scale * 3.0;
-    return height*(max(height,1.0)/(scale*scale));//
+    return height;// *(max(height, 1.0) / (scale * scale));//
 }
 
 
