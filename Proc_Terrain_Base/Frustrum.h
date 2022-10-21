@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Filename: frustumclass.h
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef _FRUSTUMCLASS_H_
-#define _FRUSTUMCLASS_H_
+#pragma once
 
 
 //////////////							from rastertek
@@ -13,28 +12,26 @@
 #include <DirectXCollision.h>
 
 ////////////////////////////////////////////////////////////////////////////////
-// Class name: FrustumClass
+// Class name: Frustum
 ////////////////////////////////////////////////////////////////////////////////
-class FrustumClass
+class Frustum
 {
 public:
-	FrustumClass();
-	FrustumClass(const FrustumClass&);
-	~FrustumClass();
+	Frustum();
+	Frustum(const Frustum&);
+	~Frustum();
 
-	void ConstructFrustum(float, XMMATRIX, XMMATRIX);
+	void ConstructFrustum(XMMATRIX projection, XMMATRIX view);
 
 	bool CheckPoint(XMFLOAT3);
 	bool CheckPoint(float, float, float);
-	bool CheckCube(XMFLOAT4);
+	bool CheckCube(XMFLOAT3, float);
 	bool CheckCube(float, float, float, float);
 	bool CheckSphere(XMFLOAT4);
 	bool CheckSphere(float, float, float, float);
-	bool CheckRectangle(XMFLOAT3, XMFLOAT3);
-	bool CheckRectangle(float, float, float, float, float, float);
+	bool CheckCuboid(XMFLOAT3, XMFLOAT3);
+	bool CheckCuboid(float, float, float, float, float, float);
 private:
 	///D3DXPLANE m_planes[6];/// what is the DX 11 version
 	BoundingFrustum frustum;
 };
-
-#endif

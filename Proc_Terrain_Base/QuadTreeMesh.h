@@ -5,6 +5,7 @@
 /////////////////////////////////////////////////////////////////////////////
 #include "TessellationPlane.h"
 #include "TerrainShader.h"
+#include "Frustrum.h"
 
 class QuadTreeMesh :
     public TessellationMesh
@@ -32,7 +33,7 @@ class QuadTreeMesh :
         QuadtreeNode(ID3D11Device* d, ID3D11DeviceContext* dc, XMFLOAT2 pos, float size) {
             position = pos;
             this->size = size;
-            const int resolution = 2;
+            const int resolution = 6;
             geometry = new TessellationPlane(d, dc, resolution);
         }
         ~QuadtreeNode() {
@@ -78,22 +79,25 @@ class QuadTreeMesh :
 
         bool isLeaf() { return subNodes == NULL; }//
 
-        void render(ID3D11DeviceContext* dc, TerrainShader* shader, const XMMATRIX& world, const XMMATRIX& view, const XMMATRIX& projection, ID3D11ShaderResourceView** textures, Light* light, FPCamera* camera, ShaderVariables* SVars, ID3D11ShaderResourceView* heightmap)
+        void render(ID3D11DeviceContext* dc, TerrainShader* shader, const XMMATRIX& world, const XMMATRIX& view, const XMMATRIX& projection, Frustum* viewFrustum, ID3D11ShaderResourceView** textures, Light* light, FPCamera* camera, ShaderVariables* SVars, ID3D11ShaderResourceView* heightmap)
         {
-            if (!(isLeaf() || subNodes[0] == NULL))
-            {/// Recursively render all subnodes - only if they are leafs 
-                for (int i = 0; i < 4; i++) {
-                    subNodes[i]->render(dc, shader, world, view, projection, textures, light, camera, SVars, heightmap);
+
+            if (viewFrustum->CheckCuboid(XMFLOAT3( position.x, 0.0, position.y), XMFLOAT3(size, 9999.9f, size))) {
+                if (!(isLeaf() || subNodes[0] == NULL))
+                {/// Recursively render all subnodes - only if they are leafs 
+                    for (int i = 0; i < 4; i++) {
+                        subNodes[i]->render(dc, shader, world, view, projection, viewFrustum, textures, light, camera, SVars, heightmap);
+                    }
                 }
-            }
-            else
-            {
-                const XMMATRIX positionMatrix = XMMatrixTranslation(position.x, 0.0, position.y);
-                const XMMATRIX scaleMatrix = XMMatrixScaling(size, 1.0, size);
-                const XMMATRIX transformMatrix = XMMatrixMultiply(scaleMatrix, positionMatrix);
-                geometry->sendData(dc, D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
-                shader->setShaderParameters(dc, XMMatrixMultiply(transformMatrix,world), view, projection, textures, light,  camera, SVars, heightmap);
-                shader->render(dc, geometry->getIndexCount());
+                else
+                {
+                    const XMMATRIX positionMatrix = XMMatrixTranslation(position.x, 0.0, position.y);
+                    const XMMATRIX scaleMatrix = XMMatrixScaling(size, 1.0, size);
+                    const XMMATRIX transformMatrix = XMMatrixMultiply(scaleMatrix, positionMatrix);
+                    geometry->sendData(dc, D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
+                    shader->setShaderParameters(dc, XMMatrixMultiply(transformMatrix, world), view, projection, textures, light, camera, SVars, heightmap);
+                    shader->render(dc, geometry->getIndexCount());
+                }
             }
         }
     };
@@ -126,11 +130,11 @@ public:
     QuadtreeNode* getRoot() {
         return Root;
     }
-    void render(ID3D11DeviceContext* dc, TerrainShader* shader, const XMMATRIX& world, const XMMATRIX& view, const XMMATRIX& projection, ID3D11ShaderResourceView** textures, Light* light, FPCamera* camera, ShaderVariables* SVars, ID3D11ShaderResourceView* heightmap)
+    void render(ID3D11DeviceContext* dc, TerrainShader* shader, const XMMATRIX& world, const XMMATRIX& view, const XMMATRIX& projection, Frustum* viewFrustum, ID3D11ShaderResourceView** textures, Light* light, FPCamera* camera, ShaderVariables* SVars, ID3D11ShaderResourceView* heightmap)
     {
 
         if (Root)
-            Root->render(dc, shader, world, view, projection, textures, light, camera, SVars, heightmap);
+            Root->render(dc, shader, world, view, projection, viewFrustum, textures, light, camera, SVars, heightmap);
     }
 
     static QuadtreeIndex getIndexOfPosition(XMFLOAT2 lookupPosition, XMFLOAT2 nodePosition)

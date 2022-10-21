@@ -1,4 +1,4 @@
-// Horizontal compute blurr, based on Frank Luna's example.
+//Landscape heightmap generation.
 
 // 
 cbuffer DataBuffer : register(b0)
@@ -30,44 +30,30 @@ float flow(float2 i, int octaves) {
         return bfm(i + bfm(i+bfm(i,octaves/3.0),octaves/1.5),octaves);
 }
 
-float hash12(float2 p)
+float hash12(float2 p)// 2 inputs, 1 output
 {
     float3 p3 = frac(float3(p.xyx) * .1031);
     p3 += dot(p3, p3.yzx + 33.33);
     return frac((p3.x + p3.y) * p3.z);
 }
 
-float2 random_offset(float seed) {
+float2 random_offset(float seed) {// random float2 between 100 & 200
     return float2(100.0 + hash12(float2(seed, 0.0)) * 100.0,
                   100.0 + hash12(float2(seed, 1.0)) * 100.0);
 }
 
-float interpolate(float a0, float a1, float w)
+float interpolate(float a0, float a1, float w)// cubic interpolation
 {
     return pow(w, 2.0) * (3.0 - 2.0 * w) * (a1 - a0) + a0;
 } //*/
 float avg(float a, float b) { return (a + b) / 2.0; }
-float valueNoise(float2 coords) // Bad. delete
-{
-    float2 i_coords = float2(int2(coords));
-    float fx = coords.x - i_coords.x; float fy = coords.y - i_coords.y;
-    float north = hash12(float2(i_coords.x, i_coords.y+1));
-    float south = hash12(float2(i_coords.x, i_coords.y-1));
-    float east =  hash12(float2(i_coords.x+1, i_coords.y));
-    float west =  hash12(float2(i_coords.x-1, i_coords.y));
-    float value = hash12(i_coords);
 
-    float val_y = interpolate(avg(north,value), avg(south,value), coords.y - i_coords.y);
-    float val_x = interpolate(avg(value,east), avg(value,west), coords.x - i_coords.x);
-    return val_y; interpolate(val_y, val_x, cos(fx / fy));//(val_x + val_y) * 0.5;//
-
-}
 float NoiseTexture(float2 coords, float scale,int octs, float roughness,float distortion)
 {
     float val = 0;
     //float weight = 1;
 
-    //float xz = coords.x + (0.10);
+    //float xz = coords.x + (0.10);   // domain rotation
     //float s2 = xz * -0.211324865405187;
     //float yy = coords.y * 0.577350269189626;
     //float xr = coords.x + (s2 + yy);
@@ -170,7 +156,7 @@ float get_alt_terrain_height(float2 input, float octaves) // a revised terrain a
     //...
     
     height = ((continental_noise * height) - (3.8f * continental_noise * continental_noise * continental_noise)) * scale * 3.0;
-    return height;// *(max(height, 1.0) / (scale * scale));//
+    return max(height,pow(height,3.0)/(10000* scale *scale));//*(clamp(subcontinent_noise / (scale * max(scale,1.0)), 1.0, 2.0)-0.0 );//
 }
 
 
@@ -201,13 +187,13 @@ float3 calculateNormal(float2 pos, int octaves, float h = 1.0 / 50.0f) // ineffi
 void main(int3 groupThreadID : SV_GroupThreadID,
 	int3 dispatchThreadID : SV_DispatchThreadID)
 {
-    const double c = 7.680;// scale factor ->: 1500 * 7.68 = 11520 { the world_position/size of the 3x3 terrain meshes }
+    const double c = 10.0;// scale factor ->: 1500 * 7.68 = 11520 { the world_position/size of the 3x3 terrain meshes }
     const float2 coords = { (dispatchThreadID.x * c) + seed.x + globalPosition.x , (dispatchThreadID.y * c) + seed.y + globalPosition.y };
     const float height = get_alt_terrain_height(coords, 20.0);
 
-    //const float macroScale = 3.0;
-    //const float2 macroCoords = { (((dispatchThreadID.x * c) - 5760) * macroScale) + 5760 + seed.x + globalPosition.x , (((dispatchThreadID.y * c) - 5760) * macroScale) + 5760 + seed.y + globalPosition.y };
-    //const float macro_height = get_terrain_height(macroCoords, 8.0);
+    const float macroScale = 3.0;
+    const float2 macroCoords = { (((dispatchThreadID.x * c) - 5760) * macroScale) + 5760 + seed.x + globalPosition.x , (((dispatchThreadID.y * c) - 5760) * macroScale) + 5760 + seed.y + globalPosition.y };
+    const float macro_height = get_alt_terrain_height(macroCoords, 8.0);
 
     // CALCULATE NORMAL
     const float3 normal = calculateNormal(coords, 5.0); const float slope = normal.y; const float2 aspect = normal.xz;
@@ -271,7 +257,7 @@ void main(int3 groupThreadID : SV_GroupThreadID,
     output.r = height/(100.f*scale);//humidity
 
     output.g = slope; // / manipulationDetails.z;
-    output.b = 0.5;//0.01 * height / (1+pow(manipulationDetails.z,3));
+    output.b = macro_height;//0.01 * height / (1+pow(manipulationDetails.z,3));
     //if (height < 0) { output.b = 1+height; }
     //output.rgb = normal;//?
     /// output.rgb -> humidity & wind?

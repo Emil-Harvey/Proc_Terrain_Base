@@ -108,12 +108,12 @@ float3 calculateNormal(float2 pos, float h = 5.0 / 5.0f)
     float3 bitangent;
     const float2 ux = float2(pos.x - h, pos.y); //neighbour to left
     const float2 vx = float2(pos.x + h, pos.y); //neighbour to right
-    float xdy = 1 * HEIGHT.SampleLevel(s0, (ux / 11520.0) + 0.5, 1).a - 1 * HEIGHT.SampleLevel(s0, (vx / 11520.0) + 0.5, 1).a;
+    float xdy = 1 * HEIGHT.SampleLevel(s0, (ux / 15000.0) + 0.5, 1).a - 1 * HEIGHT.SampleLevel(s0, (vx / 15000.0) + 0.5, 1).a;
     tangent = normalize(float3(2 * h, xdy, 0));
     // same for bitangent but in z dimension
     const float2 uz = float2(pos.x, pos.y - h); //behind
     const float2 vz = float2(pos.x, pos.y + h); //in front
-    float zdy = 1 * HEIGHT.SampleLevel(s0, (uz / 11520.0) + 0.5, 1).a - 1 * HEIGHT.SampleLevel(s0, (vz / 11520.0) + 0.5, 1).a;
+    float zdy = 1 * HEIGHT.SampleLevel(s0, (uz / 15000.0) + 0.5, 1).a - 1 * HEIGHT.SampleLevel(s0, (vz / 15000.0) + 0.5, 1).a;
     bitangent = normalize(float3(0, zdy, -2 * h));
 
     return normalize(cross(tangent, bitangent));
@@ -165,10 +165,16 @@ OutputType main(ConstantOutputType input, float2 uvwCoord : SV_DomainLocation, c
     int octaves = int(lerp(MaxOctaves, MinOctaves, saturate(log10(length(viewpos - output.world_position) / (2000.0 * scale))+1)));
 
     //***/output.world_position.y = get_terrain_height(coords.xz, octaves);//  
-    float4 heightmapSampled = HEIGHT.SampleLevel(s0, (output.world_position.xz / 11520.0) + 0.5, 0);// vertexPosition.xz//
-    output.world_position.y = heightmapSampled.a;
-
-
+    float4 heightmapSampled;
+    
+    if (abs(output.world_position.x) < 7500.0 && abs(output.world_position.z) < 7500.0) {
+        heightmapSampled = HEIGHT.SampleLevel(s0, (output.world_position.xz / 15000.0) + 0.5, 0);// vertexPosition.xz//
+        output.world_position.y = heightmapSampled.a;
+    }
+    else {
+        heightmapSampled = HEIGHT.SampleLevel(s0, (output.world_position.xz / 45000.0) + 0.5, 0);// vertexPosition.xz//
+        output.world_position.y = heightmapSampled.b;
+    }
 
     //       CALCULATE NORMALS              Send the normal, light into the ps
     if (octaves > 6)//

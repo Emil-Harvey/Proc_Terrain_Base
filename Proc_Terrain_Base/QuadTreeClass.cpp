@@ -170,7 +170,7 @@ void QuadTreePlane::Shutdown()
 }
 ///The Render function calls RenderNode which goes through the treeand renders nodes using the frustum object which determines the node visibility.The m_drawCount variable must be initialized to zero before the rendering is done as it will be incremented for each node drawn for all the triangles in each node.
 
-void QuadTreePlane::Render(/*FrustumClass* frustum,*/ ID3D11DeviceContext* deviceContext, TerrainShader* shader, const XMMATRIX& world, const XMMATRIX& view, const XMMATRIX& projection, ID3D11ShaderResourceView** textures, Light* light, FPCamera* camera, ShaderVariables* SVars, ID3D11ShaderResourceView* heightmap)
+void QuadTreePlane::Render(/*Frustum* frustum,*/ ID3D11DeviceContext* deviceContext, TerrainShader* shader, const XMMATRIX& world, const XMMATRIX& view, const XMMATRIX& projection, ID3D11ShaderResourceView** textures, Light* light, FPCamera* camera, ShaderVariables* SVars, ID3D11ShaderResourceView* heightmap)
 {
 	// Reset the number of triangles that are drawn for this frame.
 	m_drawCount = 0;
@@ -521,7 +521,7 @@ void QuadTreePlane::ReleaseNode(Node * node)
 }
 
 ///RenderNode is responsible for drawing all the visible nodes in the quad tree.It takes as input the frustum object which it uses to check if the user can view each quad or not.It also takes the shader that will be used to render each node, for this tutorial the shader is the TerrainShaderClass object.Just like the other functions this is also recursiveand calls itself for all the child nodes it can see.
-void QuadTreePlane::RenderNode(Node* node, /*FrustumClass* frustum,*/ ID3D11DeviceContext* deviceContext, TerrainShader* shader, const XMMATRIX& world, const XMMATRIX& view, const XMMATRIX& projection, ID3D11ShaderResourceView** textures, Light* light, FPCamera* camera, ShaderVariables* SVars, ID3D11ShaderResourceView* heightmap)
+void QuadTreePlane::RenderNode(Node* node, /*Frustum* frustum,*/ ID3D11DeviceContext* deviceContext, TerrainShader* shader, const XMMATRIX& world, const XMMATRIX& view, const XMMATRIX& projection, ID3D11ShaderResourceView** textures, Light* light, FPCamera* camera, ShaderVariables* SVars, ID3D11ShaderResourceView* heightmap)
 {
 	bool result;
 

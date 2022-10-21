@@ -368,8 +368,8 @@ void App1::firstPass()
 	XMMATRIX worldMatrix, viewMatrix, projectionMatrix;
 	const XMMATRIX positionMatrix = XMMatrixTranslation(xz_TerrainMeshOffset, 0.0, xz_TerrainMeshOffset);
 	//water
-	static const XMMATRIX waterScaleMatrix = XMMatrixScaling(3 * 4096 / Water_Mesh_Res, 1.0, 3 * 4096 / Water_Mesh_Res);
-	const XMMATRIX waterMatrix = XMMatrixMultiply(waterScaleMatrix, XMMatrixTranslation(xz_TerrainMeshOffset*3, 0.0, xz_TerrainMeshOffset*3));
+	static const XMMATRIX waterScaleMatrix = XMMatrixScaling(45000 , 1.0, 45000 );
+	//const XMMATRIX waterMatrix = XMMatrixMultiply(waterScaleMatrix, XMMatrixTranslation(xz_TerrainMeshOffset*3, 0.0, xz_TerrainMeshOffset*3));
 	//terrain
 	static const XMMATRIX terrainScaleMatrix = XMMatrixScaling(256, 1.0, 256);// 4096 may be incorrect, it may also be x^2 or something4096.0 / terrainResolution
 	const XMMATRIX m_TerrainMatrix = XMMatrixMultiply(terrainScaleMatrix, positionMatrix);
@@ -416,8 +416,10 @@ void App1::firstPass()
 	renderer->setZBuffer(true);
 
 	XMFLOAT2 camera_xz = { camera->getPosition().x, camera->getPosition().z };
-	qt_Terrain = new QuadTreeMesh(renderer->getDevice(), renderer->getDeviceContext(), { 0.0,0.0 }, 10000.0, 4, camera_xz);
-	qt_Terrain->render(renderer->getDeviceContext(), terrainShader, worldMatrix /*XMMatrixMultiply(worldMatrix, m_TerrainMatrix)*/, viewMatrix, projectionMatrix, textures, light, camera, &vars, curHeightmapSRV);
+	qt_Terrain = new QuadTreeMesh(renderer->getDevice(), renderer->getDeviceContext(), { 0.0,0.0 }, 45000.0, 4, camera_xz);
+	Frustum* frustum = new Frustum();
+	frustum->ConstructFrustum(projectionMatrix, viewMatrix);
+	qt_Terrain->render(renderer->getDeviceContext(), terrainShader, worldMatrix /*XMMatrixMultiply(worldMatrix, m_TerrainMatrix)*/, viewMatrix, projectionMatrix, frustum, textures, light, camera, &vars, curHeightmapSRV);
 
 	/// main terrain
 //	m_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);//													
@@ -542,7 +544,7 @@ void App1::firstPass()
 	renderer->setAlphaBlending(true);
 
 	m_Water->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);//								vars.vars.
-	waterShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(worldMatrix, waterMatrix), viewMatrix, projectionMatrix, textures[4], light, camera, XMFLOAT4(tessellationFactor, waterAmplitude, LODnear, LODfar), time);
+	waterShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(worldMatrix, waterScaleMatrix), viewMatrix, projectionMatrix, textures[4], light, camera, XMFLOAT4(tessellationFactor, waterAmplitude, LODnear, LODfar), time);
 	waterShader->render(renderer->getDeviceContext(), m_Water->getIndexCount());
 	//renderer->setAlphaBlending(false);
 

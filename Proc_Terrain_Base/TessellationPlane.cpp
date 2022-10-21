@@ -17,7 +17,7 @@ void TessellationPlane::initBuffers(ID3D11Device* device)
 {
 	VertexType* vertices;
 	unsigned long* indices;
-	int index, i, j;//
+	int index;//
 	float positionX, positionZ, u, v, increment;//
 	D3D11_BUFFER_DESC vertexBufferDesc, indexBufferDesc;
 	D3D11_SUBRESOURCE_DATA vertexData, indexData;
@@ -35,14 +35,16 @@ void TessellationPlane::initBuffers(ID3D11Device* device)
 	u = 0;//
 	v = 0;//
 	increment = 1.0f / resolution;//
-
-	for (j = 0; j < (resolution - 1); j++)
+	const float resMinusOne = resolution - 1.0f; const float unit = 0.5;//* resMinusOne;
+	for (int j = 0; j < (resolution - 1); j++)
 	{
-		for (i = 0; i < (resolution - 1); i++)
+		for (int i = 0; i < (resolution - 1); i++)
 		{
+			const float x = i -unit * (resolution - 2);
+			const float y = j -unit * (resolution - 2);
 			// Bottom right
-			positionX = (float)(i + 0.5);
-			positionZ = (float)(j - 0.5);
+			positionX = (float)(x + unit)/ resMinusOne;
+			positionZ = (float)(y - unit)/ resMinusOne;
 
 			vertices[index].position = XMFLOAT3(positionX, 0.0f, positionZ);
 			vertices[index].texture = XMFLOAT2(u + increment, v);
@@ -51,8 +53,8 @@ void TessellationPlane::initBuffers(ID3D11Device* device)
 			index++;
 
 			// Upper right.
-			positionX = (float)(i + 0.5);
-			positionZ = (float)(j + 0.5);
+			positionX = (float)(x + unit)/ resMinusOne;
+			positionZ = (float)(y + unit)/ resMinusOne;
 
 			vertices[index].position = XMFLOAT3(positionX, 0.0f, positionZ);
 			vertices[index].texture = XMFLOAT2(u + increment, v + increment);
@@ -62,8 +64,8 @@ void TessellationPlane::initBuffers(ID3D11Device* device)
 
 
 			// lower left
-			positionX = (float)(i - 0.5);
-			positionZ = (float)(j + 0.5);
+			positionX = (float)(x - unit)/ resMinusOne;
+			positionZ = (float)(y + unit)/ resMinusOne;
 
 			vertices[index].position = XMFLOAT3(positionX, 0.0f, positionZ);
 			vertices[index].texture = XMFLOAT2(u, v + increment);
@@ -72,8 +74,8 @@ void TessellationPlane::initBuffers(ID3D11Device* device)
 			index++;
 
 			// Upper left.
-			positionX = (float)(i - 0.5);
-			positionZ = (float)(j - 0.5);
+			positionX = (float)(x - unit)/ resMinusOne;
+			positionZ = (float)(y - unit)/ resMinusOne;
 
 			vertices[index].position = XMFLOAT3(positionX, 0.0f, positionZ);
 			vertices[index].texture = XMFLOAT2(u, v);

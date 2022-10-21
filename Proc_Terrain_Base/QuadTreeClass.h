@@ -14,7 +14,7 @@
 /////////////
 const int MAX_TRIANGLES = 12100;
 
-///The QuadTreePlane will also need to interface with the TerrainClass, FrustumClass, and TerrainShaderClass so the headers for each are included here.
+///The QuadTreePlane will also need to interface with the TerrainClass, Frustum, and TerrainShaderClass so the headers for each are included here.
 #include "PlaneMesh.h"
 #include "TessellationPlane.h"
 #include "DXF.h"
@@ -58,7 +58,7 @@ public:
 
 	bool Initialize(/*TessellationPlane*,*/ ID3D11Device*);
 	void Shutdown();
-	void Render(/*FrustumClass*,*/ ID3D11DeviceContext*, TerrainShader*, const XMMATRIX& world, const XMMATRIX& view, const XMMATRIX& proj, ID3D11ShaderResourceView** textures, Light*, FPCamera*, ShaderVariables*, ID3D11ShaderResourceView* );
+	void Render(/*Frustum*,*/ ID3D11DeviceContext*, TerrainShader*, const XMMATRIX& world, const XMMATRIX& view, const XMMATRIX& proj, ID3D11ShaderResourceView** textures, Light*, FPCamera*, ShaderVariables*, ID3D11ShaderResourceView* );
 
 	int GetDrawCount();
 
@@ -68,7 +68,7 @@ private:
 	int CountTriangles(float, float, float);
 	bool IsTriangleContained(int, float, float, float);
 	void ReleaseNode(Node*);
-	void RenderNode(Node*, /*FrustumClass*,*/ ID3D11DeviceContext*, TerrainShader*, const XMMATRIX& world, const XMMATRIX& view, const XMMATRIX& proj, ID3D11ShaderResourceView** textures, Light*, FPCamera*, ShaderVariables*, ID3D11ShaderResourceView* heightmap);
+	void RenderNode(Node*, /*Frustum*,*/ ID3D11DeviceContext*, TerrainShader*, const XMMATRIX& world, const XMMATRIX& view, const XMMATRIX& proj, ID3D11ShaderResourceView** textures, Light*, FPCamera*, ShaderVariables*, ID3D11ShaderResourceView* heightmap);
 
 private:
 	int m_triangleCount, m_drawCount;
