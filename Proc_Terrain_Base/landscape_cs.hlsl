@@ -134,7 +134,7 @@ float get_alt_terrain_height(float2 input, float octaves) // a revised terrain a
     
     const float continental_noise = lerp(
         flow(input / (4900.7 * scale), 5) + (0.2 * bfm(input / (500 * scale), octaves)),
-        1 * (bfm(input / (4900.7 * scale), 6) + (0.2 * bfm(input / (500 * scale), octaves))), perlin(input / (919.7 * scale)));
+        1 * (bfm(input / (4900.7 * scale), 6) + (0.2 * NoiseTexture(input, 0.067 / scale_coeff, 8, 0.39589, min(distortion_noise, 0.7)))), perlin(input / (919.7 * scale)));
 
     // the lower this value (0.0), the more 'marbled' the terrain, creating swirly rivers and archipelagos;
     // the higher the value (1.0), the more regular the terrain, far fewer islands or river deltas.
@@ -156,7 +156,8 @@ float get_alt_terrain_height(float2 input, float octaves) // a revised terrain a
     //...
     
     height = ((continental_noise * height) - (3.8f * continental_noise * continental_noise * continental_noise)) * scale * 3.0;
-    return max(height,pow(height,3.0)/(10000* scale *scale));//*(clamp(subcontinent_noise / (scale * max(scale,1.0)), 1.0, 2.0)-0.0 );//
+    
+    return (height + pow(height,3.0)/(20000* scale *scale));//*(clamp(subcontinent_noise / (scale * max(scale,1.0)), 1.0, 2.0)-0.0 );//
 }
 
 
@@ -193,7 +194,7 @@ void main(int3 groupThreadID : SV_GroupThreadID,
 
     const float macroScale = 3.0;
     const float2 macroCoords = { (((dispatchThreadID.x * c) - 5760) * macroScale) + 5760 + seed.x + globalPosition.x , (((dispatchThreadID.y * c) - 5760) * macroScale) + 5760 + seed.y + globalPosition.y };
-    const float macro_height = get_alt_terrain_height(macroCoords, 8.0);
+    const float macro_height = get_alt_terrain_height(macroCoords, 14.0);
 
     // CALCULATE NORMAL
     const float3 normal = calculateNormal(coords, 5.0); const float slope = normal.y; const float2 aspect = normal.xz;

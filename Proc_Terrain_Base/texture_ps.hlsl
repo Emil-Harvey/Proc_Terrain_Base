@@ -53,8 +53,7 @@ float4 main(InputType input) : SV_TARGET
     //else textureColour.rgb = float3(0.01,0.106,0.09);// 0.0;// 
     ///textureColour.rgb = thres;
 
-    //textureColour.a = length(textureColour.rgb);
-    clip(textureColour.a < 0.00623 ? -1 : 1);
+
 
 	return textureColour;
 }

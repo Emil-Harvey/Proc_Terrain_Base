@@ -112,9 +112,9 @@ struct InputType
 {
     float4 position : SV_POSITION;
     float4 world_position : POSITION;
-    noperspective float2 texX : TEXCOORD0;
-    noperspective float2 texY : TEXCOORD1;
-    noperspective float2 texZ : TEXCOORD2;
+    /*noperspective*/ float2 texX : TEXCOORD0;
+    /*noperspective*/ float2 texY : TEXCOORD1;
+    /*noperspective*/ float2 texZ : TEXCOORD2;
     float3 blendweights : NORMAL0;
     float3 normal : NORMAL1;
 
@@ -154,12 +154,12 @@ LightInfo calculateSunlightInfo(float4 coords) {
     const float longditude = (coords.x + globalPosition.x) / (planetDiameter * 3.14159265359);
     const float AxialTilt = 0.10;
     // this is a relative value rather than absolute (add 12 for abs)
-    float lengthOfDay = -12 * -sin(latitude) * cos(timeOfYear / 57.29577);// replace -6 [-1] w/ -12*sin(latitude)  <--- to be moved to VS
-    float time = 24* (timeOfYear - int(timeOfYear) + (longditude/3.14159265));//
-    float sunAltitude = lengthOfDay - (cos(time / 3.81) / AxialTilt);
-    float skyR = saturate(-0.5 * (-(lengthOfDay - (cos( time / 3.81f) / AxialTilt)) - 1));
-    float skyB = saturate(-0.5 * (-sunAltitude - 1));
-    float skyG = pow((pow(skyR, 8) + skyB) / 1.532f, lerp(0.5, 8, lengthOfDay * 0.5 + 0.5));
+    const float lengthOfDay = -12 * -sin(latitude) * cos(radians(timeOfYear));// replace -6 [-1] w/ -12*sin(latitude)  <--- to be moved to VS
+    const float time = 24* (timeOfYear - int(timeOfYear) + (longditude/3.14159265));//
+    const float sunAltitude = lengthOfDay - (cos(time / 3.81) / AxialTilt);
+    const float skyR = saturate(-0.5 * (-(lengthOfDay - (cos( time / 3.81f) / AxialTilt)) - 1));
+    const float skyB = saturate(-0.5 * (-sunAltitude - 1));
+    //const float skyG = pow((pow(skyR, 8) + skyB) / 1.532f, lerp(0.5, 8, lengthOfDay * 0.5 + 0.5));
 
     LightInfo li;
 
@@ -206,8 +206,8 @@ float4 Tex(Texture2D t, triplanarUVs uv)//
 //
 MaterialSample heightBlend(Material m1, Material m2, float bias, triplanarUVs uv)
 {// uses a constant blending factor (0.1)
-    float h1 = Tex(m1.normal_height, uv).a * (1 - bias);
-    float h2 = Tex(m2.normal_height, uv).a * bias;
+    float h1 = (Tex(m1.normal_height, uv).a * 0.3) + (1 - bias);
+    float h2 = (Tex(m2.normal_height, uv).a * 0.3) + bias;
     float blendPoint = max(h1, h2) - 0.1;
     float w1 = max(h1 - blendPoint, 0);// weight
     float w2 = max(h2 - blendPoint, 0);
@@ -218,8 +218,8 @@ MaterialSample heightBlend(Material m1, Material m2, float bias, triplanarUVs uv
 }
 MaterialSample heightBlend(MaterialSample m1, MaterialSample m2, float bias, triplanarUVs uv)
 { // uv is unused
-    float h1 = m1.normal_height.a * (1 - bias);
-    float h2 = m2.normal_height.a * bias;
+    float h1 = (m1.normal_height.a * 0.3) + (1 - bias);
+    float h2 = (m2.normal_height.a * 0.3) + bias;
     float blendPoint = max(h1, h2) - 0.21;///       *
     float w1 = max(h1 - blendPoint, 0); // weight
     float w2 = max(h2 - blendPoint, 0);
@@ -230,8 +230,8 @@ MaterialSample heightBlend(MaterialSample m1, MaterialSample m2, float bias, tri
 }
 MaterialSample heightBlend(MaterialSample m1, Material m2, float bias, triplanarUVs uv)
 { // uv is used for m2
-    float h1 = m1.normal_height.a * (1 - bias);
-    float h2 = Tex(m2.normal_height, uv ).a * bias;
+    float h1 = (m1.normal_height.a * 0.3) + (1 - bias);
+    float h2 = (Tex(m2.normal_height, uv ).a * 0.3) + bias;
     float blendPoint = max(h1, h2) - 0.1;
     float w1 = max(h1 - blendPoint, 0); // weight
     float w2 = max(h2 - blendPoint, 0);
@@ -323,24 +323,26 @@ float4 main(InputType input) : SV_TARGET
     }
     else // not water
     {// blend the textures based on biome parameters, and using the heightmap of each texture (height blend) for more realistic texturing
-        float aridness = ((input.temperature + 17.0) / 45.0) * (1.0-input.humidity);
-        // try simplifying biome texturing by ruling out pure biome areas from mixing textures
-        if (input.steepness <= 0.1) {
+        float aridness = ((input.temperature + 1.0) / 8.0) + (1.0-input.humidity);
+        // try simplifying biome texturing by ruling out pure biome areas first
+        if (input.steepness <= 0.09) {
+            // steep: cliff
             textureColour = Tex(cliff.albedo_specular, uv);//float4( 0.0,0.0,0.9,1.0 );//
             textureNormal = Tex(cliff.normal_height, uv);
         }
         else if (input.steepness >= 0.95 && input.snowness >= 0.9) {
+            // flat + snowy: snow
             textureColour = Tex(snow.albedo_specular, uv);//float4(0.0, 0.5, 0.9, 1.0);
             textureNormal = Tex(snow.normal_height, uv);
         
         }
-        else if (input.steepness >= 0.95 && input.beachness <= 0.1 && input.noise >= 1) {
-            
+        else if (input.steepness >= 0.95 && input.beachness <= 0.1 && input.noise >= 0.99) {
+            // flat + beachy, high noise: sand
             textureColour = Tex(sand.albedo_specular, uv);
             textureNormal = Tex(sand.normal_height, uv);
             
         }
-        else if (input.steepness >= 0.95 && aridness >= 1 && input.temperature / 22.4 >= 1) {
+        else if (input.steepness >= 0.95 && aridness >= 1 && input.temperature  >= 1) {
             textureColour = Tex(savan.albedo_specular, uv);
             textureNormal = Tex(savan.normal_height, uv);
         }
@@ -350,7 +352,7 @@ float4 main(InputType input) : SV_TARGET
        // }
         else {
             //  // ((rock or cliff,a,b) or (snow or ((sand or gravel,a,b) or (grass or grass2,a,b),a,b),a,b),a,b) 
-            currentMat = heightBlend( heightBlend(heightBlend(heightBlend(stone, sand, input.noise, uv), heightBlend(heightBlend(grass2, grass, input.noise2, uv), heightBlend(rock, savan, input.temperature / 22.4, uv), aridness, uv), input.beachness, uv), snow, input.snowness, uv), cliff, 1- input.steepness, uv);
+            currentMat = heightBlend( heightBlend(heightBlend(heightBlend(stone, sand, input.noise, uv), heightBlend(heightBlend(grass2, grass, input.noise2, uv), heightBlend(rock, savan, 0.86*(input.temperature+1), uv), aridness, uv), input.beachness, uv), snow, input.snowness, uv), cliff, 1- input.steepness, uv);
             //currentMat = heightBlend(savan,grass2 , input.temperature / 22.4, uv);
 
             textureColour = currentMat.albedo_specular; //float4(snowness, snowness, snowness, 1.0); //
@@ -367,30 +369,31 @@ float4 main(InputType input) : SV_TARGET
     lightColour = calculateLighting(-sunlight.direction, input.normal + textureNormal.xyz, sunlight.colour);//calculateLighting(-lightDirection, input.normal + textureNormal, diffuseColour); 
     
      //add wetness effects at beach
-    if (false &&altitude <= 0.2)
+    if (true &&altitude <= 2.2)
     {
-        float depth = abs(altitude - 0.2);
-        textureColour.rgb = pow(textureColour.rgb, min(1 + depth * 2.0, 3.0));//  wetness    
+        const float depth = abs(altitude - 2.2);
+        textureColour.rgb = pow(textureColour.rgb, min(1 + depth * 0.30, 3.0));//  wetness    
         //textureColour.rgb /= min(1 + depth, 3.0); //darkness. at altitudes > beachline we / by 1 [no change]
-        //textureShine.r *= min(1 + depth, 2.3);
+        textureColour.a *= min(1 + depth, 2.3);
         
         /////depth = pow(min(altitude, 0),3.0);// seawater colouration
         /////lightColour.r /= 1 - depth * 0.05;//, 4.0;//min();
         /////lightColour.g /= 1 - depth * 0.025;//, 2.35;//min();
         /////lightColour.b /= 1 - depth * 0.02;//, 1.2;//min();
     }                                           
-    else if (false || textureColour.g > (textureColour.r + textureColour.b) / 1.35) // if pixel is green
-    {/*/ grass dryness
+    else if (true || textureColour.g > (textureColour.r + textureColour.b) / 1.35) // if pixel is green
+    {// grass dryness
         float greenness = (1.5*textureColour.g - length(textureColour.rb))/textureColour.g;//2* textureColour.g - ((textureColour.r + textureColour.b) / 2.35);
         float4 newcol = textureColour;
         newcol.r /= min(0.6 + input.humidity,1.2);
         newcol.g /= max(0.95 + 0.5+ (input.temperature/64), 0.5);
         newcol.b /= 2* max(0.95 + 0.5 + (input.temperature / 64), 0.5);
-        textureColour = lerp(textureColour, newcol, pow(greenness,3.0));
+        textureColour = lerp(textureColour, newcol, pow(greenness, 2.0));// //float4(0.7,0.1,0.8,1.0), float4(0.2, 0.8, 0.1, 1.0)
         //textureColour.rgb = greenness;
         //if (greenness > 1.0) textureColour.rg = greenness - 1;
         //if (greenness < 0.0) textureColour.rb = greenness + 1;
-    //*/}     
+    //*/
+    }     
     else if (false && textureColour.r > textureColour.b - 0.1 && textureColour.b > textureColour.g - 0.1 && textureColour.g > textureColour.r - 0.1 && input.snowness < 0.1) // if pixel is grey
     {// rock sandiness and soil moisture
         textureColour.b /= max(0.6 + input.humidity * (1 - input.snowness) * 2, 1.0);
@@ -415,12 +418,13 @@ float4 main(InputType input) : SV_TARGET
     //textureColour.rgb = input.normal;
 
         ///     Humidity Map shader
-    //textureColour.r = 2* input.humidity -0.5 ;
-    //textureColour.b = -2 * input.humidity + 0.5;
-    //textureColour.g = pow(1 - abs(input.humidity / 2.0),1);
-    //if (input.world_position.y <= 0)
-    //    textureColour.rgb = 0.5;
-
+    if (timeOfYear == -90.0) {
+        textureColour.r = 2* input.humidity -0.5 ;
+        textureColour.b = -2 * input.humidity + 0.5;
+        textureColour.g = pow(1 - abs(input.humidity / 2.0),1);
+        if (input.world_position.y <= 0)
+            textureColour.rgb = 0.5;
+    }
 
 
     float3 view = normalize(viewpos - input.world_position.xyz);
@@ -453,12 +457,14 @@ float4 main(InputType input) : SV_TARGET
     //if (length(pixelColour.rgb) > thres) pixelColour.rgb = 1.0;
     //else pixelColour.rgb = 0.0;
 
-  //  HSLcolour hum;
-  //  hum.h = input.humidity;
-  //  hum.s = 1.00;
-  //  hum.l = input.humidity / 1.0;
-  //  pixelColour = float4(hum.toRGB(), 1.0);
-    
+    if (timeOfYear == 0.0) {// humidity view
+        HSLcolour hum;
+        hum.h = input.humidity;
+        hum.s = 1.00;
+        hum.l = input.humidity / 1.0;
+        pixelColour = float4(hum.toRGB(), 1.0);
+    }
+
     //pixelColour = bfm(input.world_position + bfm(input.world_position + bfm(input.world_position, 14), 14), 14);
    // pixelColour.xyz = input.blendweights;//if (input.blendweights.x == 0) { pixelColour.r = 1; }//
     //return sunlight.colour;

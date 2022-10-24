@@ -7,7 +7,7 @@ CloudShader::CloudShader(ID3D11Device* device, HWND hwnd) : TextureShader(device
 	//if (textured)
 	//	initShader(L"texture_vs.cso", L"texture_ps.cso");
 	//else
-	initShader(L"shaders/tess_vs.cso",L"shaders/cloud_gs.cso", L"shaders/texture_ps.cso");// 
+	initShader(L"shaders/texture_vs.cso",L"shaders/cloud_gs.cso", L"shaders/cloud_ps.cso");// 
 }
 
 
@@ -49,7 +49,7 @@ void CloudShader::initShader(const wchar_t* vsFilename, const wchar_t* gsFilenam
 	// Load (+ compile) shader files
 	loadVertexShader(vsFilename);
 	loadPixelShader(psFilename);
-	loadGeometryShader(gsFilename);
+	//loadGeometryShader(gsFilename);
 
 	// Setup the description of the dynamic matrix constant buffer that is in the vertex shader.
 	matrixBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
@@ -88,9 +88,9 @@ void CloudShader::initShader(const wchar_t* vsFilename, const wchar_t* gsFilenam
 
 	// Create a texture sampler state description.
 	samplerDesc.Filter = D3D11_FILTER_ANISOTROPIC;///D3D11_FILTER_MIN_MAG_MIP_POINT;///        // anti-aliasing mode.
-	samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
-	samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
-	samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+	samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_MIRROR;
+	samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_MIRROR;
+	samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_MIRROR;
 	samplerDesc.MipLODBias = 0.0f;
 	samplerDesc.MaxAnisotropy = 1;
 	samplerDesc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
@@ -115,7 +115,7 @@ void CloudShader::setShaderParameters(ID3D11DeviceContext* deviceContext, const 
 	tworld = XMMatrixTranspose(worldMatrix);
 	tview = XMMatrixTranspose(viewMatrix);
 	tproj = XMMatrixTranspose(projectionMatrix);
-	;
+	
 	// Send  matrix data
 	result = deviceContext->Map(matrixBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 	dataPtr = (MatrixBufferType*)mappedResource.pData;
@@ -124,7 +124,7 @@ void CloudShader::setShaderParameters(ID3D11DeviceContext* deviceContext, const 
 	dataPtr->projection = tproj;
 	deviceContext->Unmap(matrixBuffer, 0);
 	deviceContext->VSSetConstantBuffers(0, 1, &matrixBuffer);
-	deviceContext->GSSetConstantBuffers(1, 1, &matrixBuffer);
+	//deviceContext->GSSetConstantBuffers(1, 1, &matrixBuffer);
 	
 
 	// Send pos data to geo shader
@@ -135,7 +135,7 @@ void CloudShader::setShaderParameters(ID3D11DeviceContext* deviceContext, const 
 	XMStoreFloat4(&posPtr->position, inverse.r[3]);
 
 	deviceContext->Unmap(cameraBuffer, 0);
-	deviceContext->GSSetConstantBuffers(2, 1, &cameraBuffer);
+	//deviceContext->GSSetConstantBuffers(2, 1, &cameraBuffer);
 
 	// Send variable data
 	result = deviceContext->Map(variableBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
@@ -144,7 +144,7 @@ void CloudShader::setShaderParameters(ID3D11DeviceContext* deviceContext, const 
 	varsPtr->timeOfYear = t;
 	varsPtr->day = int(t);
 	deviceContext->Unmap(variableBuffer, 0);
-	deviceContext->GSSetConstantBuffers(0, 1, &variableBuffer);
+	//deviceContext->GSSetConstantBuffers(0, 1, &variableBuffer);
 	deviceContext->PSSetConstantBuffers(0, 1, &variableBuffer);
 
 

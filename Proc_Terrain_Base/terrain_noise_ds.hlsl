@@ -48,9 +48,9 @@ struct OutputType
 {
     float4 position : SV_POSITION;
     float4 world_position : POSITION;
-    noperspective float2 texX : TEXCOORD0;
-    noperspective float2 texY : TEXCOORD1;
-    noperspective float2 texZ : TEXCOORD2;
+    /*noperspective*/ float2 texX : TEXCOORD0;
+    /*noperspective*/ float2 texY : TEXCOORD1;
+    /*noperspective*/ float2 texZ : TEXCOORD2;
     float3 blendweights : NORMAL0;
     float3 normal : NORMAL1;
 
@@ -133,13 +133,8 @@ OutputType main(ConstantOutputType input, float2 uvwCoord : SV_DomainLocation, c
         uvwCoord.x);
     output.position = float4(vertexPosition, 1.0f);
 
-   //going to try make 3D tex coordinates/ output.tex = 64 *uvwCoord / scale;//vertexPosition.xz / 30; //
+   /// output.tex = 64 *uvwCoord / scale;//vertexPosition.xz / 30; //
 
-   //// calculate un-displaced normals
-   //output.normal = lerp( // bilinear interpolation
-   //    lerp(patch[0].normal, patch[1].normal, uvwCoord.y),
-   //    lerp(patch[3].normal, patch[2].normal, uvwCoord.y),
-   //    uvwCoord.x);
 
     //output.amplitude = patch[0].amplitude;
     const half sealevel = 0.02f;
@@ -181,9 +176,8 @@ OutputType main(ConstantOutputType input, float2 uvwCoord : SV_DomainLocation, c
     {
         ////output.normal.xyz = heightmapSampled.rgb;
         output.normal = calculateNormal(output.world_position.xz);
-  //        smooth normal by averaging neighbours
+        // smooth normal by averaging neighbours
 
-       // output.normal.r = -output.normal.r;//*/
     }
     else // this mesh is not being manipulated, so keep the normals as they were
     {
@@ -218,8 +212,8 @@ OutputType main(ConstantOutputType input, float2 uvwCoord : SV_DomainLocation, c
     }
 
     // beachline
-    const half beachline = 0.83; //altitude at which beaches meet soil
-    output.beachness = saturate(slope) * saturate(2 * altitude - (4*bfm(seedc.xz / (scale * 12), 4)) - beachline);
+    const half beachline = 20.83; //altitude at which beaches meet soil
+    output.beachness = saturate(slope) * saturate(2 * altitude - (40*bfm(seedc.xz / (scale * 72), 4)) - beachline);
 
     if (output.world_position.y > -5) {
 
@@ -231,8 +225,8 @@ OutputType main(ConstantOutputType input, float2 uvwCoord : SV_DomainLocation, c
     //output.world_position.y = prevailingWindX * 30; debug
     
 
-    const half minGlobalTemp = -37.0;//`C
-    const half maxGlobalTemp = 36.6;//`C
+    const half minGlobalTemp = -1.0;//-37`C
+    const half maxGlobalTemp = 1.0;//36.6`C
     //  climactic/static annual average temperature. seasonal and daily weather will alter this
     output.temperature = lerp(minGlobalTemp, maxGlobalTemp, 
         (0.5 + 0.5 * cos(latitude)) // cold @ poles hot @ equator
@@ -241,28 +235,31 @@ OutputType main(ConstantOutputType input, float2 uvwCoord : SV_DomainLocation, c
 
 // snowline //height value - high near the middle (equator)     ::{ 70'- 550m; 45'- 3300m; Eqtr- 6000m }::
     const half snowline = (13.0 + 13.3 * ( cos(latitude)
-        + 3.25*(cos(time / PI180) * -sin(latitude * 0.5))) )//      <----- needs work
+        + 3.25*(cos(radians(time)) * -sin(latitude * 0.5))) )//      <----- needs work
         * scale;
     // this represents temperature/climate, specifically how cold
     output.snowness = pow(saturate(0.5 / scale * (0.2 * altitude - 7.1181*bfm(seedc.xz / (scale * 20), 3) - snowline)), 3.0 );
     //  apply deep snow effect on flat ground (raise vertices)
     output.world_position.y += max(output.snowness * output.steepness - 0.5, 0) * scale;
+    
     /*DEBUG: output.snowness = HEIGHT.SampleLevel(s0, (output.world_position.zx / 11520.0) + 0.5, 0).b;//heightmapSampled.b;*/
-    // absolute humidity - relative humidity is less meaningful///          <-- fix this algorithm?
-    /*output.humidity =
-        ((output.temperature - minGlobalTemp) * 0.02// rep 1* w abs
-            + (dot(output.wind, -aspect) *0.0)  ); // rainshadow effect - it is more humid on slopes that face the wind
+    
+    // absolute humidity - relative humidity is less meaningful(?)         <-- fix this algorithm?
+    output.humidity = 0.5*(1.0+cos(latitude * 03.10));
+    const float output_humidity = 0.2 *
+        ((output.temperature - minGlobalTemp) * 0.8// rep 1* w abs
+            + (dot(output.wind, -aspect) *0.40)  ); // rainshadow effect - it is more humid on slopes that face the wind
         //+ perlin(seedc.xz / (scale * 99)) +1    
         //)/ altitude ; //
-output.humidity = pow((output.humidity - 0.5) * 1.75, 5) + 0.5;// shift most values closer to 0.5 */
+output.humidity += pow((output_humidity - 0.5) * 1.75, 5) + 0.45;// shift most values closer to 0.5 */
 
-output.humidity = heightmapSampled.r;
+//output.humidity = heightmapSampled.r;
     }
     else {
         output.snowness = 0.0; // avoid snow underwater lol
     }
 //      noise to determine between plains and woodland, slightly higher chance of the former
-    output.noise2 =  saturate(output.humidity * pow(1 - bfm(seedc.xz / (scale * 29), 4), 3));
+    output.noise2 =  -0.1+ 1.2*saturate(output.humidity * pow(1 - bfm(seedc.xz / (scale * 29), 4), 3));
 
     // similar noise for beach pebbles, but offset by 99 so the noise does not line up
     output.noise = saturate(pow(1 - bfm(seedc.xz / (scale * 60), 3), 3)+perlin(seedc.xz / (scale * 211.1171))+ 0.3);//pow(saturate(1 - bfm(99 + coords / (scale * 12), 4)), 3);

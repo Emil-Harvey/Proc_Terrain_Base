@@ -91,16 +91,18 @@ float4 main(InputType input) : SV_TARGET
     
     //altitude
     textureColour = float4(max(0 / 7.0, 0), max(0 / 7.0, 0.02), max((0 + 3.0) * 0.05, 0.05), 1.0f); //((1 + tWater.Sample(s0, input.tex * 20))/3.0f) * tWater.Sample(s0, input.tex * 15000);
+    
     textureNormal = calculateNormals(float2(input.world_position.x, input.world_position.z)); // pixel based lighting
     //textureNormal = input.normal;   //polygon based lighting          //nWater.Sample(s0, input.tex * 15000);
     //textureNormal.r *= -1;
     //textureNormal = normalize(textureNormal);
+    
     textureShine = 0.60f;
     
     lightColour = calculateLighting(-lightDirection, textureNormal, diffuseColour);
 	
     float3 view = normalize(viewpos - input.world_position.xyz);
-    // simulate critical angle
+    // simulate critical angle - fresnel shading
     float a = saturate(abs(4.0 * dot(view, textureNormal))); //float3(0, 1, 0)
     textureColour.rgb += 0.16 * (1 - a);// add lightness
     

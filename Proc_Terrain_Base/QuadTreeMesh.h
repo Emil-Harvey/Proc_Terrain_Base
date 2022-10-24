@@ -7,8 +7,7 @@
 #include "TerrainShader.h"
 #include "Frustrum.h"
 
-class QuadTreeMesh :
-    public TessellationMesh
+class QuadTreeMesh //: public TessellationMesh
 {
     /// a mesh made of constituent tessellationplanes, that dynamically use a quadtree system
     ///Recursion
@@ -107,13 +106,17 @@ public:
 
     //QuadTreeMesh(ID3D11Device*, ID3D11DeviceContext*, int sivisLevel = 0);
     QuadTreeMesh(ID3D11Device* device, ID3D11DeviceContext* deviceContext, XMFLOAT2 position, float size, int depth, XMFLOAT2 position_of_detail)
-        : TessellationMesh(device, deviceContext)
+       //: TessellationMesh(device, deviceContext)
     {
         Root = new QuadtreeNode(device, deviceContext, position, size);
         Root->subdivide(device, deviceContext, position_of_detail, depth);
     }
     ~QuadTreeMesh();
 
+    void Reconstruct(ID3D11Device* device, ID3D11DeviceContext* deviceContext, int depth, XMFLOAT2 position_of_detail)
+    {
+        Root->subdivide(device, deviceContext, position_of_detail, depth);
+    }
 private:
     QuadtreeNode* Root;/// 
     int DivisionLevel = 0;
@@ -121,8 +124,6 @@ private:
     int minDivisions = 0;
     int maxDivisions = 8;
     //maxQuads = 4^maxDivisions;
-
-    //XMFLOAT3* POD; // Position of Detail
 
 ///------------------------------------------------------------
 

@@ -1,3 +1,5 @@
+// Sun and Skydome shader.
+
 //cbuffer DataBuffer : register(b2)
 //{
 //    float2 chunkPos;
@@ -127,16 +129,15 @@ float4 main(InputType i) : SV_TARGET
     //const float G = pow(saturate(i.position.y * 0.001), 0.3);
     //const float R = pow(saturate(i.position.y * 0.001), 0.5) - 0.1;
     //return float4(R, G, 1.0f, 1.0f);      
-    //              i.position.y * 0.001
-    //float sky_zenithness = i.position.y * 0.0005 + 0.5 - viewMatrix[1][2];// height of forward vector
-        float3 sky = lerp(highSkyColour, lowSkyColour, 1-i.world_position.y);//saturate(pow(sky_zenithness+0.45,13.0))
-    /*if (length(sky) < 0.5) {// if sky dark
+
+        float3 sky = lerp(lowSkyColour, highSkyColour, i.world_position.y);//saturate(pow(sky_zenithness+0.45,13.0))
+    if (length(sky) < 0.5) {// if sky dark
         float g = sky;
         //display stars at night sky
-        if (hash(i.position.x, i.position.y + 0.5 - viewMatrix[1][2]) == 1.0)
-            g += -0.450 + 0.5*hash(i.position.x/100.0, i.position.y/100.0 + 0.5 - viewMatrix[1][2]);// make pixel brighter
-        //sky = lerp(g, sky, saturate(length(sky) * 2.0));
-    }*/
+        if (hash(i.world_position.y, i.world_position.x + 0.5 - i.world_position.z) == 1.0)
+            g += 0.450 + 0.5*hash(i.world_position.x/300.0, i.world_position.y/300.0 + 0.5 - i.world_position.z);// make pixel brighter
+        sky = lerp(g, sky, saturate(length(sky) * 2.0));
+    }
     return float4(sky, 1.0);//  
 
     }
