@@ -16,7 +16,7 @@ cbuffer DataBuffer : register(b0)
 Texture2D gInput : register(t0);
 RWTexture2D<float4> gOutput : register(u0);
 
-#define N 8 //256
+#define N 10 //256
 //#define CacheSize (N + 2*gBlurRadius)
 //groupshared float4 gCache[CacheSize];
 
@@ -254,14 +254,19 @@ void main(int3 groupThreadID : SV_GroupThreadID,
 
 	
 
-    output.a = height;//40+sin(degrees(coords.y)) * 40.f;//
+    output.a = macro_height;//40+sin(degrees(coords.y)) * 40.f;//
     output.r = height/(100.f*scale);//humidity
 
     output.g = slope; // / manipulationDetails.z;
     output.b = macro_height;//0.01 * height / (1+pow(manipulationDetails.z,3));
     //if (height < 0) { output.b = 1+height; }
-    //output.rgb = normal;//?
     /// output.rgb -> humidity & wind?
+
+    /*/ debug: for the pData array
+    output.a = 1.0f;
+    output.r = 1024.0f;
+    output.g = dispatchThreadID.x;
+    output.b = dispatchThreadID.y;//*/
 
 	gOutput[dispatchThreadID.xy] = output;
 

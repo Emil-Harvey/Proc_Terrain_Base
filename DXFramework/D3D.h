@@ -8,9 +8,10 @@
 * Provided functions for controlling begin/end frame rendering, wireframe rendering, orthographic and alpha blended rendering.
 * Member variables for projection, ortho and identity world matrices.
 *
-* \author Paul Robertson (edits by Emil Harvey)
+* \author Paul Robertson (modified by Emil Harvey)
 */
 
+#define _DEBUG //*/
 
 #ifndef _D3D_H_
 #define _D3D_H_

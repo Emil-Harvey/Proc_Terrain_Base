@@ -85,7 +85,7 @@ void ComputeLandscape::createOutputUAV()
 
 void ComputeLandscape::setShaderParameters(ID3D11DeviceContext* dc, ID3D11ShaderResourceView* texture1, ShaderVariables* SVars)
 {
-	dc->CSSetShaderResources(0, 1, &texture1);
+	//dc->CSSetShaderResources(0, 1, &texture1);
 
 	HRESULT result;
 	D3D11_MAPPED_SUBRESOURCE mappedResource;

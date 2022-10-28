@@ -78,6 +78,9 @@
     <ClCompile Include="ComputeErosion.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="TessellationTerrain.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="App1.h">
@@ -141,6 +144,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ComputeErosion.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="TessellationTerrain.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

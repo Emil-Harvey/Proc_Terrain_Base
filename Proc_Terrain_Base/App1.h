@@ -22,6 +22,8 @@
 #include "ComputeErosion.h"
 #include "QuadTreeMesh.h"//"QuadTreeClass.h"
 
+//#include <wrl\client.h>// ComPtr
+#include <array>
 
 class App1 : public BaseApplication
 {
@@ -44,6 +46,8 @@ protected:
 	void finalPass();
 	void gui();
 	void initTextures();
+
+	void TransferHeightmapToCPU();
 
 	float lerp(float a,float b,float x){
 		return (a + x * (b - a));
@@ -126,10 +130,13 @@ private:
 	// 'map'
 	OrthoMesh* mapMesh;
 	RenderTexture* mapRenderTexture;
-	int mapResolution = 1500;
+	const int mapResolution = 1500;
 	int mapZoom = 6;// bigger means see more
 	//
 	ID3D11ShaderResourceView* curHeightmapSRV;
+	D3D11_MAPPED_SUBRESOURCE heightmap_mappedResource;
+	const int MAP_DIM = 1600;
+	std::array<XMFLOAT4, 1600 * 1600> pixelData{};
 };
 
 #endif

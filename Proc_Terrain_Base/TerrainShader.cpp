@@ -188,4 +188,10 @@ void TerrainShader::setShaderParameters(ID3D11DeviceContext* deviceContext, cons
 	deviceContext->PSSetSamplers(0, 1, &sampleState);
 }
 
+void TerrainShader::unbind(ID3D11DeviceContext* deviceContext)// I thought this would solve the problem but it doesn't (?)
+{
+	ID3D11ShaderResourceView* nullSRV[] = { NULL };
+	deviceContext->DSSetShaderResources(0, 1, nullSRV);
+}
+
 

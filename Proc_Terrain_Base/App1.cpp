@@ -1,5 +1,6 @@
 #include "App1.h"
 //#include <cmath>
+
 App1::App1()
 {
 	light = nullptr;
@@ -119,6 +120,7 @@ App1::~App1()
 		delete qt_Terrain;
 		qt_Terrain = 0;
 	}
+
 	if (sun_mesh)
 	{
 		delete sun_mesh;
@@ -193,8 +195,8 @@ bool App1::frame()
 	if (vars.TimeOfYear >= 361) vars.TimeOfYear = 1;
 	
 	if (unpaused) {
-		time += 0.01 * timescale * timer->getTime();// pass time
-		vars.TimeOfYear += (0.01 / 24.f) * timer->getTime();
+		time += 0.01f * timescale * timer->getTime();// pass time
+		vars.TimeOfYear += (0.01f / 24.f) * timer->getTime();
 
 		
 	}
@@ -208,7 +210,7 @@ bool App1::frame()
 	// Render the graphics.
 	result = render();
 	if (!result) { return false; }
-	
+
 	return true;
 }
 bool App1::render()
@@ -238,14 +240,16 @@ bool App1::render()
 bool App1::renderMinimap(bool erode_as_well)
 {
 	csLand->setShaderParameters(renderer->getDeviceContext(), curHeightmapSRV, &vars);
-	csLand->compute(renderer->getDeviceContext(), 200, 200, 1);
+	csLand->compute(renderer->getDeviceContext(), MAP_DIM / 10, MAP_DIM / 10, 1);
 	csLand->unbind(renderer->getDeviceContext());
 	// make a copy of the SRV to be used in the future, as the pointer may 'break'(?)
 	//auto csLandscapeSRV = *
 	curHeightmapSRV = csLand->getSRV();//&csLandscapeSRV;//
 
 	if (erode_as_well)
-		return erodeTerrain();
+		erodeTerrain();
+
+	TransferHeightmapToCPU();
 
 	return true;
 }
@@ -523,7 +527,7 @@ void App1::finalPass()
 
 	renderer->setWireframeMode(false);
 	mapMesh->sendData(renderer->getDeviceContext());// renderr the rendertexture
-	textureShader->setShaderParameters(renderer->getDeviceContext(), worldMatrix, baseViewMatrix, orthoMatrix, (DepthOfField) ? cameraDepth->getDepthMapSRV() : preDOFRT->getShaderResourceView()); //verBlur->getSRV());//csLand->getSRV());//
+	textureShader->setShaderParameters(renderer->getDeviceContext(), worldMatrix, baseViewMatrix, orthoMatrix, (DepthOfField) ? verBlur->getSRV() : preDOFRT->getShaderResourceView()); //verBlur->getSRV());//csLand->getSRV());//
 	textureShader->render(renderer->getDeviceContext(), mapMesh->getIndexCount());
 	//renderer->setZBuffer(true);
 
@@ -550,18 +554,8 @@ void App1::gui()
 	ImGui::Checkbox("(orthographic view)", &renderLODchunks);
 	//ImGui::SliderFloat("thingy", &test, 0.51, 1.999);
 	
-	//if (ImGui::CollapsingHeader("Terrain Generation Settings##")) {/// TERRAIN GEN
-	//	//ImGui::SliderInt("##Terrain Resolution", &terrainResolution, 2, 1024, "Terrain Resolution: %d");
-	//	//ImGui::SameLine();
-	//	//if (ImGui::Button("16")) 
-	//	//	terrainResolution = 16;
-	//
-	//	//ImGui::Text("Pre-generation vertical offset");
-	//	//ImGui::SliderFloat("##height", &vars.Amplitude, -20, 20, "Height: %.4f", 2.5f);
-	//
-	//	//ImGui::SliderInt("##Octaves", &octaves, 1, 16, "%d Octaves");
-	//}
-	ImGui::Text("\nHigher scale magnifies the terrain");
+	
+	//ImGui::Text("\nHigher scale 'magnifies' the terrain");
 	ImGui::SliderFloat("##Scale", &vars.Scale, 0.01, 50, "Scale: %.4f", 2.5f);
 
 		ImGui::Text("Seed:");
@@ -583,21 +577,7 @@ void App1::gui()
 			//(,curHeightmapSRV, ,L"Exported Data/heightmap1.png")//
 
 	}
-	//	if (terrainResolution != terrains[0]->GetResolution()) {
-	//		terrains[0]->Resize(terrainResolution);
-	//	}
-	//	for (int i = 0; i < chunks; i++) {
-	//		terrains[i]->SetScale(scale);
-	//		terrains[i]->SetOffset(xOffset, yOffset);
-	//		//if (i==0)
-	//		terrains[i]->BrownianHtMap(octaves, height);
-	//		//else// generate lower LOD terrain with fewer octaves (for performance), as the differince is less visible
-	//		//	terrains[i]->BrownianHtMap((int)ceil(octaves/1.5), height);
-	//		if (autoSmooth)
-	//			terrains[i]->perlinSmooth(mountainPoint, minReducedHeight / 100.0, maxIncreasedHeight / 100.0);
-	//		terrains[i]->Regenerate(renderer->getDevice(), renderer->getDeviceContext(), false);
-	//	}
-	//}
+
 	ImGui::SliderFloat("##latitude", &vars.GlobalPosition.y, -2.0*vars.PlanetDiameter, 2.0*vars.PlanetDiameter, "Latitude: %.2f", 3.0f);
 	ImGui::SliderFloat("##Planetdiameter", &vars.PlanetDiameter, 50, 127420, "Planet Diameter: %.2f", 5.0f);
 
@@ -659,9 +639,14 @@ void App1::gui()
 	ImGui::Begin("Options", &gameSettingsMenuActive);
 		ImGui::SliderFloat("##cams", camera->getSpeedScale(), 0.5, 400.00, "Camera Speed: %.2f", 3);
 
+
+		if (ImGui::Button("Copy Terrain to CPU")) {
+			
+		}
+
 	ImGui::End();
 
-	//*
+	/*
 	ImGui::Begin("Test  options");
 		auto v = camera->getViewMatrix();
 		float pos[4] = { v.r[0].m128_f32[0],v.r[0].m128_f32[1],v.r[0].m128_f32[2],v.r[0].m128_f32[3] };
@@ -828,4 +813,55 @@ void App1::initTextures() {
 	macroTexture = textureMgr->getTexture(L"macro");
 	//textureMgr->loadTexture(L"foo", L"res/test.png");
 	//cloudTexture = textureMgr->getTexture(L"foo");
+}
+
+inline void App1::TransferHeightmapToCPU() 
+{
+/// Create a 'resource' that is able to be accessed & read on the CPU; a copy of the heightmap texture
+	//Getting the resources of the texture view
+	ID3D11Resource* textureResourceCPU = nullptr;
+	ID3D11Resource* textureResourceGPU = nullptr;
+	ID3D11Texture2D* textureInterface = nullptr;
+
+	D3D11_TEXTURE2D_DESC textureDesc;
+	ZeroMemory(&textureDesc, sizeof(textureDesc));
+	textureDesc.Width = MAP_DIM;
+	textureDesc.Height = MAP_DIM;
+	textureDesc.MipLevels = 1;
+	textureDesc.ArraySize = 1;
+	textureDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+	textureDesc.SampleDesc.Count = 1;
+	textureDesc.SampleDesc.Quality = 0;
+	textureDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+	textureDesc.Usage = D3D11_USAGE_STAGING;
+	//textureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
+	textureDesc.MiscFlags = 0;
+	ID3D11Texture2D* staging_texture = 0;
+	renderer->getDevice()->CreateTexture2D(&textureDesc, 0, &staging_texture);
+
+	curHeightmapSRV->GetResource(&textureResourceGPU);
+	textureResourceGPU->QueryInterface(&textureInterface);
+
+	renderer->getDeviceContext()->CopyResource(staging_texture, textureResourceGPU);
+
+	HRESULT h;
+	h = renderer->getDeviceContext()->Map(staging_texture, 0, D3D11_MAP_READ, 0, &heightmap_mappedResource); //
+
+	// heightmap_mappedResource.RowPitch contains the value that the runtime adds to pData to move from row to row, where each row contains multiple pixels.
+
+	/// access the raw data from the resource
+	// we know the heightmap is 1600x1600 pixels = 2560000. 
+	// bytes = heightmap_mappedResource.RowPitch * height; = 25600 * 1600 = 40,960,000
+	const int heightmap_size = MAP_DIM * MAP_DIM;
+
+	//XMFLOAT4 temp_arr[1600 * 1600] = {(XMFLOAT4*)heightmap_mappedResource.pData} //std::copy_n(std::begin(), heightmap_size, std::begin(pixelData))//pixelData = ((XMFLOAT4*)heightmap_mappedResource.pData);
+
+	for (int row = 0; row < MAP_DIM; row++) {
+		for (int pixel = 0; pixel < MAP_DIM; pixel++) {
+			const int pixel_number = pixel + (row * MAP_DIM);
+			pixelData[pixel_number] = (XMFLOAT4)((XMFLOAT4*)heightmap_mappedResource.pData)[pixel_number];
+			}
+	}
+
+	qt_Terrain->SetHeightmap(&pixelData); 
 }

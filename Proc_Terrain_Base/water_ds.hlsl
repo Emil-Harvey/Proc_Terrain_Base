@@ -41,8 +41,8 @@ struct InputType
 struct OutputType
 {
     float4 position : SV_POSITION;
-    float4 world_position : TEXCOORD0;
-    float2 tex : TEXCOORD1;
+    float4 world_position : POSITION;
+    float2 tex : TEXCOORD0;
     float3 normal : NORMAL;
     
 };

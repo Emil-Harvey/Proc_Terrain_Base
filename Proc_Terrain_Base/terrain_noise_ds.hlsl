@@ -153,7 +153,7 @@ OutputType main(ConstantOutputType input, float2 uvwCoord : SV_DomainLocation, c
     /// will probably need to add distinct 'seed' offset so that seed doesn't interfere with Eqtr position etc. // what? // i think this has been done
 
     ///     DISPLACE VERTICES
-    output.world_position.y = 1;
+    //output.world_position.y = 1;
 
     int MaxOctaves = 12;// * sqrt(scale);//      scale the Detail & therefore efficiency of noise, over distance
     int MinOctaves = 1;
@@ -164,11 +164,11 @@ OutputType main(ConstantOutputType input, float2 uvwCoord : SV_DomainLocation, c
     
     if (abs(output.world_position.x) < 7500.0 && abs(output.world_position.z) < 7500.0) {
         heightmapSampled = HEIGHT.SampleLevel(s0, (output.world_position.xz / 15000.0) + 0.5, 0);// vertexPosition.xz//
-        output.world_position.y = heightmapSampled.a;
+        //output.world_position.y = heightmapSampled.a;
     }
     else {
         heightmapSampled = HEIGHT.SampleLevel(s0, (output.world_position.xz / 45000.0) + 0.5, 0);// vertexPosition.xz//
-        output.world_position.y = heightmapSampled.b;
+        //output.world_position.y = heightmapSampled.b;
     }
 
     //       CALCULATE NORMALS              Send the normal, light into the ps

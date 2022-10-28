@@ -207,6 +207,7 @@
     </ClCompile>
     <ClCompile Include="TerrainShader.cpp" />
     <ClCompile Include="TessellationPlane.cpp" />
+    <ClCompile Include="TessellationTerrain.cpp" />
     <ClCompile Include="TessShader.cpp" />
     <ClCompile Include="TextureShader.cpp" />
     <ClCompile Include="TnDepthShader.cpp" />
@@ -247,6 +248,7 @@
     </ClInclude>
     <ClInclude Include="TerrainShader.h" />
     <ClInclude Include="TessellationPlane.h" />
+    <ClInclude Include="TessellationTerrain.h" />
     <ClInclude Include="TessShader.h" />
     <ClInclude Include="TextureShader.h" />
     <ClInclude Include="TnDepthShader.h" />

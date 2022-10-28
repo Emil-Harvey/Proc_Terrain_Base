@@ -23,28 +23,29 @@ void TessellationPlane::initBuffers(ID3D11Device* device)
 	D3D11_SUBRESOURCE_DATA vertexData, indexData;
 
 	// Calculate the number of vertices in the terrain mesh.
-	vertexCount = (resolution - 1) * (resolution - 1) * 6;//
+	const float quad_resolution = resolution - 1.0f; // number of quads in each row of the 'quad grid'.
+	vertexCount = quad_resolution * quad_resolution * 6;//
 	indexCount = vertexCount;//
 
 	vertices = new VertexType[vertexCount];
 	indices = new unsigned long[indexCount];
 
-
 	index = 0;//
 	// UV coords.
 	u = 0;//
 	v = 0;//
-	increment = 1.0f / resolution;//
-	const float resMinusOne = resolution - 1.0f; const float unit = 0.5;//* resMinusOne;
-	for (int j = 0; j < (resolution - 1); j++)
+	increment = 1.0f / resolution;// distance between each vertex
+	const float unit = 0.5;// distance from vertices to origin point. having 0.5 means origin=center rather than corner.
+
+	for (int j = 0; j < quad_resolution; j++)
 	{
-		for (int i = 0; i < (resolution - 1); i++)
+		for (int i = 0; i < quad_resolution; i++)
 		{
 			const float x = i -unit * (resolution - 2);
 			const float y = j -unit * (resolution - 2);
 			// Bottom right
-			positionX = (float)(x + unit)/ resMinusOne;
-			positionZ = (float)(y - unit)/ resMinusOne;
+			positionX = (float)(x + unit)/ quad_resolution;
+			positionZ = (float)(y - unit)/ quad_resolution;
 
 			vertices[index].position = XMFLOAT3(positionX, 0.0f, positionZ);
 			vertices[index].texture = XMFLOAT2(u + increment, v);
@@ -53,8 +54,8 @@ void TessellationPlane::initBuffers(ID3D11Device* device)
 			index++;
 
 			// Upper right.
-			positionX = (float)(x + unit)/ resMinusOne;
-			positionZ = (float)(y + unit)/ resMinusOne;
+			positionX = (float)(x + unit)/ quad_resolution;
+			positionZ = (float)(y + unit)/ quad_resolution;
 
 			vertices[index].position = XMFLOAT3(positionX, 0.0f, positionZ);
 			vertices[index].texture = XMFLOAT2(u + increment, v + increment);
@@ -64,8 +65,8 @@ void TessellationPlane::initBuffers(ID3D11Device* device)
 
 
 			// lower left
-			positionX = (float)(x - unit)/ resMinusOne;
-			positionZ = (float)(y + unit)/ resMinusOne;
+			positionX = (float)(x - unit)/ quad_resolution;
+			positionZ = (float)(y + unit)/ quad_resolution;
 
 			vertices[index].position = XMFLOAT3(positionX, 0.0f, positionZ);
 			vertices[index].texture = XMFLOAT2(u, v + increment);
@@ -74,8 +75,8 @@ void TessellationPlane::initBuffers(ID3D11Device* device)
 			index++;
 
 			// Upper left.
-			positionX = (float)(x - unit)/ resMinusOne;
-			positionZ = (float)(y - unit)/ resMinusOne;
+			positionX = (float)(x - unit)/ quad_resolution;
+			positionZ = (float)(y - unit)/ quad_resolution;
 
 			vertices[index].position = XMFLOAT3(positionX, 0.0f, positionZ);
 			vertices[index].texture = XMFLOAT2(u, v);

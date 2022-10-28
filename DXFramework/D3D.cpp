@@ -42,9 +42,9 @@ void D3D::createDevice()
 	//featureLevel = D3D_FEATURE_LEVEL_11_1;
 	D3D_FEATURE_LEVEL featureLevels[] = { D3D_FEATURE_LEVEL_11_1, D3D_FEATURE_LEVEL_11_0 };
 	UINT creationFlags = NULL;
-//#if defined(_DEBUG)
-//	creationFlags = D3D11_CREATE_DEVICE_DEBUG;
-//#endif
+#if defined(_DEBUG)
+	creationFlags = D3D11_CREATE_DEVICE_DEBUG;
+#endif
 
 	// Create a list of every GFX adapter available
 	//IDXGIFactory1* pFactory;
@@ -278,7 +278,7 @@ void D3D::createDepthlDisableState()
 
 }
 
-// Creates additional raster state, in this case a aplha blending capable state.
+// Creates additional raster state, in this case an aplha blending capable state.
 void D3D::createBlendState()
 {
 	D3D11_BLEND_DESC blendStateDescription;
