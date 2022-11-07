@@ -68,7 +68,7 @@ class QuadTreeMesh //: public TessellationMesh
             delete geometry;// not a leaf node, so doesn't need geometry.
             geometry = nullptr;
 
-            QuadtreeIndex indexToSubdivide = getIndexOfPosition(targetPosition, position);
+            //QuadtreeIndex indexToSubdivide = getIndexOfPosition(targetPosition, position);
             for (int i=0; i< 4; ++i)
             {
                 XMFLOAT2 newPos = position;
@@ -83,9 +83,12 @@ class QuadTreeMesh //: public TessellationMesh
                 else
                     newPos.y += size * 0.25f;
 
+                float weight = getWeightedIndexOfPosition(targetPosition, newPos, depth - 1);
+
+
                 subNodes[i] = new QuadtreeNode(d, dc, newPos, size / 2.f);
                 // if this node is not at
-                if (depth > 0 && indexToSubdivide == i) {
+                if (depth > 0 && /*indexToSubdivide == i*/ weight+5.0f < size/2.f) {
                     
                     subNodes[i]->subdivide(d, dc, targetPosition, depth - 1);
                 }
@@ -168,7 +171,7 @@ public:
 
         return QuadtreeIndex(index);
     }
-    static float getWeightedIndexOfPosition(XMFLOAT2 lookupPosition, XMFLOAT2 nodePosition)
+    static float getWeightedIndexOfPosition(XMFLOAT2 lookupPosition, XMFLOAT2 nodePosition, int depth, float radius = 5.0f)
     {
         int index = 0;
         XMVECTOR v = { lookupPosition.x - nodePosition.x,lookupPosition.y - nodePosition.y };

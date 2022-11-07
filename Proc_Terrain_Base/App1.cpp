@@ -90,6 +90,7 @@ void App1::init(HINSTANCE hinstance, HWND hwnd, int screenWidth, int screenHeigh
 	camera->speedScale = 10;
 
 	renderMinimap();
+	qt_Terrain->SetHeightmap(&pixelData);
 }
 
 
@@ -203,6 +204,35 @@ bool App1::frame()
 
 	// Generate the view matrix based on the camera's position.
 	camera->update();
+
+	/// check for chunk update
+	// if player moves to chunk border, reset position (relative to chunk) & update global offset (not seed) - illusion of seamless/infinite movement
+	static const int chunk = 1920*2;
+	if (camera->getPosition().x < -chunk) 
+	{
+		vars.GlobalPosition.x -= chunk;
+		camera->setPosition(camera->getPosition().x + chunk, camera->getPosition().y, camera->getPosition().z);//	  reset player to center of mesh (originally planned to set to opposite edge of mesh)
+		renderMinimap();// regenerate terrain
+	}
+	else if (camera->getPosition().x > chunk)
+	{
+		vars.GlobalPosition.x += chunk;
+		camera->setPosition(camera->getPosition().x - chunk, camera->getPosition().y, camera->getPosition().z);
+		renderMinimap();
+	}
+
+	if (camera->getPosition().z < -chunk) // negative z (south)
+	{
+		vars.GlobalPosition.y -= chunk;
+		camera->setPosition(camera->getPosition().x, camera->getPosition().y, camera->getPosition().z + chunk);
+		renderMinimap();
+	}
+	else if (camera->getPosition().z > chunk) // north
+	{
+		vars.GlobalPosition.y += chunk;
+		camera->setPosition(camera->getPosition().x, camera->getPosition().y, camera->getPosition().z - chunk);
+		renderMinimap();
+	}
 
 	XMFLOAT2 camera_xz = { camera->getPosition().x, camera->getPosition().z };
 	qt_Terrain->Reconstruct(renderer->getDevice(), renderer->getDeviceContext(), 4, camera_xz);
@@ -423,33 +453,7 @@ void App1::firstPass()
 	//float xMeshOffset = xz_TerrainMeshOffset * 3;//XMMATRIX xPositionMatrix;
 	//float zMeshOffset = xz_TerrainMeshOffset * 3;//XMMATRIX zPositionMatrix;
 	
-	static const int chunk = 1920;
-
-	if (camera->getPosition().x < -chunk) /// if player moves to chunk border, reset position (relative to chunk) & update global offset (not seed) - illusion of seamless movement
-	{
-		vars.GlobalPosition.x -= chunk;
-		camera->setPosition(camera->getPosition().x + chunk, camera->getPosition().y, camera->getPosition().z);//	  reset player to center of mesh (originally planned to set to opposite edge of mesh)
-		renderMinimap();// regenerate terrain
-	}	
-	else if (camera->getPosition().x > chunk)
-	{
-		vars.GlobalPosition.x += chunk;
-		camera->setPosition(camera->getPosition().x - chunk, camera->getPosition().y, camera->getPosition().z);
-		renderMinimap();
-	}
 	
-	if (camera->getPosition().z < -chunk) // negative z (south)
-	{
-		vars.GlobalPosition.y -= chunk;
-		camera->setPosition(camera->getPosition().x, camera->getPosition().y, camera->getPosition().z + chunk);
-		renderMinimap();
-	}	
-	else if (camera->getPosition().z > chunk) // north
-	{
-		vars.GlobalPosition.y += chunk;
-		camera->setPosition(camera->getPosition().x, camera->getPosition().y, camera->getPosition().z - chunk);
-		renderMinimap();
-	}
 	
 	//		Disable Back Face Culling
 	
