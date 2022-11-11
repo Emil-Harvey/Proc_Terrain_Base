@@ -73,7 +73,7 @@ void App1::init(HINSTANCE hinstance, HWND hwnd, int screenWidth, int screenHeigh
 	vars.LODfar = 53;//
 	vars.Scale = 7;
 	vars.PlanetDiameter = 127420;// a 1/1000th of earth
-	vars.TessellationFactor = 5;
+	vars.TessellationFactor = 1;
 	vars.TimeOfYear = 54.0;
 
 	// Initialise light
@@ -91,6 +91,61 @@ void App1::init(HINSTANCE hinstance, HWND hwnd, int screenWidth, int screenHeigh
 
 	renderMinimap();
 	qt_Terrain->SetHeightmap(&pixelData);
+
+	///init imgui styling
+	{
+		ImVec4* colors = ImGui::GetStyle().Colors;
+		colors[ImGuiCol_Text] = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
+		colors[ImGuiCol_TextDisabled] = ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
+		colors[ImGuiCol_WindowBg] = ImVec4(0.06f, 0.06f, 0.06f, 0.94f);
+		colors[ImGuiCol_ChildBg] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+		colors[ImGuiCol_PopupBg] = ImVec4(0.08f, 0.08f, 0.08f, 0.94f);
+		colors[ImGuiCol_Border] = ImVec4(0.63f, 0.63f, 0.70f, 0.50f);
+		colors[ImGuiCol_BorderShadow] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+		colors[ImGuiCol_FrameBg] = ImVec4(0.44f, 0.44f, 0.44f, 0.60f);
+		colors[ImGuiCol_FrameBgHovered] = ImVec4(0.57f, 0.57f, 0.57f, 0.70f);
+		colors[ImGuiCol_FrameBgActive] = ImVec4(0.76f, 0.76f, 0.76f, 0.80f);
+		colors[ImGuiCol_TitleBg] = ImVec4(0.04f, 0.04f, 0.04f, 1.00f);
+		colors[ImGuiCol_TitleBgActive] = ImVec4(0.16f, 0.16f, 0.16f, 1.00f);
+		colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.00f, 0.00f, 0.00f, 0.60f);
+		colors[ImGuiCol_MenuBarBg] = ImVec4(0.14f, 0.14f, 0.14f, 1.00f);
+		colors[ImGuiCol_ScrollbarBg] = ImVec4(0.02f, 0.02f, 0.02f, 0.53f);
+		colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.31f, 0.31f, 0.31f, 1.00f);
+		colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.41f, 0.41f, 0.41f, 1.00f);
+		colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.51f, 0.51f, 0.51f, 1.00f);
+		colors[ImGuiCol_CheckMark] = ImVec4(0.13f, 0.75f, 0.55f, 0.80f);
+		colors[ImGuiCol_SliderGrab] = ImVec4(0.13f, 0.75f, 0.75f, 0.80f);
+		colors[ImGuiCol_SliderGrabActive] = ImVec4(0.13f, 0.75f, 1.00f, 0.80f);
+		colors[ImGuiCol_Button] = ImVec4(0.13f, 0.75f, 0.55f, 0.40f);
+		colors[ImGuiCol_ButtonHovered] = ImVec4(0.13f, 0.75f, 0.75f, 0.60f);
+		colors[ImGuiCol_ButtonActive] = ImVec4(0.13f, 0.75f, 1.00f, 0.80f);
+		colors[ImGuiCol_Header] = ImVec4(0.13f, 0.75f, 0.55f, 0.40f);
+		colors[ImGuiCol_HeaderHovered] = ImVec4(0.13f, 0.75f, 0.75f, 0.60f);
+		colors[ImGuiCol_HeaderActive] = ImVec4(0.13f, 0.75f, 1.00f, 0.80f);
+		colors[ImGuiCol_Separator] = ImVec4(0.13f, 0.75f, 0.55f, 0.40f);
+		colors[ImGuiCol_SeparatorHovered] = ImVec4(0.13f, 0.75f, 0.75f, 0.60f);
+		colors[ImGuiCol_SeparatorActive] = ImVec4(0.13f, 0.75f, 1.00f, 0.80f);
+		colors[ImGuiCol_ResizeGrip] = ImVec4(0.13f, 0.75f, 0.55f, 0.40f);
+		colors[ImGuiCol_ResizeGripHovered] = ImVec4(0.13f, 0.75f, 0.75f, 0.60f);
+		colors[ImGuiCol_ResizeGripActive] = ImVec4(0.13f, 0.75f, 1.00f, 0.80f);
+		colors[ImGuiCol_PlotLines] = ImVec4(0.61f, 0.61f, 0.61f, 1.00f);
+		colors[ImGuiCol_PlotLinesHovered] = ImVec4(1.00f, 0.43f, 0.35f, 1.00f);
+		colors[ImGuiCol_PlotHistogram] = ImVec4(0.90f, 0.70f, 0.00f, 1.00f);
+		colors[ImGuiCol_PlotHistogramHovered] = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
+		colors[ImGuiCol_TextSelectedBg] = ImVec4(0.26f, 0.59f, 0.98f, 0.35f);
+		colors[ImGuiCol_DragDropTarget] = ImVec4(1.00f, 1.00f, 0.00f, 0.90f);
+		colors[ImGuiCol_NavHighlight] = ImVec4(0.26f, 0.59f, 0.98f, 1.00f);
+		colors[ImGuiCol_NavWindowingHighlight] = ImVec4(1.00f, 1.00f, 1.00f, 0.70f);
+		colors[ImGuiCol_NavWindowingDimBg] = ImVec4(0.80f, 0.80f, 0.80f, 0.20f);
+		colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.80f, 0.80f, 0.80f, 0.35f);
+		/// corner shaping
+		ImGui::GetStyle().WindowRounding = 0.0f;
+		ImGui::GetStyle().ChildRounding = 0.0f;
+		ImGui::GetStyle().FrameRounding = 0.0f;
+		ImGui::GetStyle().GrabRounding = 0.0f;
+		ImGui::GetStyle().PopupRounding = 0.0f;
+		ImGui::GetStyle().ScrollbarRounding = 0.0f;
+	}
 }
 
 
@@ -206,6 +261,7 @@ bool App1::frame()
 	camera->update();
 
 	/// check for chunk update
+	if(chunkUpdatesEnabled){
 	// if player moves to chunk border, reset position (relative to chunk) & update global offset (not seed) - illusion of seamless/infinite movement
 	static const int chunk = 1920*2;
 	if (camera->getPosition().x < -chunk) 
@@ -235,7 +291,11 @@ bool App1::frame()
 	}
 
 	XMFLOAT2 camera_xz = { camera->getPosition().x, camera->getPosition().z };
-	qt_Terrain->Reconstruct(renderer->getDevice(), renderer->getDeviceContext(), 4, camera_xz);
+	static XMFLOAT2 old_camera_xz;
+	if(camera_xz.x != old_camera_xz.x && camera_xz.y != old_camera_xz.y)
+		qt_Terrain->Reconstruct(renderer->getDevice(), renderer->getDeviceContext(), 4, camera_xz);
+	old_camera_xz = camera_xz;
+	}
 
 	// Render the graphics.
 	result = render();
@@ -279,7 +339,9 @@ bool App1::renderMinimap(bool erode_as_well)
 	if (erode_as_well)
 		erodeTerrain();
 
+#ifdef CPU_TERRAIN_ENABLED
 	TransferHeightmapToCPU();
+#endif // CPU_TERRAIN_ENABLED
 
 	return true;
 }
@@ -312,7 +374,7 @@ bool App1::erodeTerrain()
 //	// Get the world, view, projection, and ortho matrices from the camera and Direct3D objects.
 //	worldMatrix = renderer->getWorldMatrix();
 //	viewMatrix = camera->getViewMatrix();
-//	projectionMatrix = (renderLODchunks ? renderer->getOrthoMatrix() : renderer->getProjectionMatrix());// renderer->getOrthoMatrix();//getProjectionMatrix();//
+//	projectionMatrix = (orthoCameraEnabled ? renderer->getOrthoMatrix() : renderer->getProjectionMatrix());// renderer->getOrthoMatrix();//getProjectionMatrix();//
 //
 //	static const XMMATRIX terrainScaleMatrix = XMMatrixScaling(256, 1.0, 256);// 4096.0 / terrainResolution // 4096 may be incorrect, it may also be x^2 or something
 //	const XMMATRIX m_TerrainMatrix = XMMatrixMultiply(terrainScaleMatrix, positionMatrix);
@@ -400,7 +462,7 @@ void App1::firstPass()
 	// Get the world, view, projection, and ortho matrices from the camera and Direct3D objects.
 	worldMatrix = renderer->getWorldMatrix();
 	viewMatrix = camera->getViewMatrix();
-	projectionMatrix = (renderLODchunks ? renderer->getOrthoMatrix() : renderer->getProjectionMatrix());
+	projectionMatrix = (orthoCameraEnabled ? renderer->getOrthoMatrix() : renderer->getProjectionMatrix());
 
 
 	////////
@@ -475,19 +537,18 @@ void App1::firstPass()
 	}
 
 	/// render water
-	renderer->setAlphaBlending(true);
+	//renderer->setAlphaBlending(true);
 
 	m_Water->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);//								vars.vars.
 	waterShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(worldMatrix, waterScaleMatrix), viewMatrix, projectionMatrix, textures[4], light, camera, XMFLOAT4(tessellationFactor, waterAmplitude, LODnear, LODfar), time);
 	waterShader->render(renderer->getDeviceContext(), m_Water->getIndexCount());
 	//renderer->setAlphaBlending(false);
 
-	///	clouds		 - cant get em to look right ... (switch to back-face? - fixed) fix matrix/shader pipeline
+	///	clouds (and rain..)
 	//
-	//renderer->setAlphaBlending(true);
-	///renderer->getDeviceContext()->RSSetState(renderer->getDeviceContext()->RSGetState())
-	m_clouds->sendData(renderer->getDeviceContext());
-	//
+	renderer->setAlphaBlending(true);
+	
+	m_clouds->sendData(renderer->getDeviceContext()); //
 	cloudShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(XMMatrixMultiply(worldMatrix, XMMatrixRotationX(0)), XMMatrixMultiply( XMMatrixScaling(2048.0, 1.0, 2048.0), XMMatrixTranslation(-14000, 1700.0, -14000.0))), viewMatrix, projectionMatrix, cloudTexture, vars.TimeOfYear);
 	cloudShader->render(renderer->getDeviceContext(), m_clouds->getIndexCount());
 	renderer->set2SidedMode(false);// return to regular fill rasterState
@@ -555,7 +616,7 @@ void App1::gui()
 	ImGui::Checkbox("Wireframe mode", &wireframeToggle);
 
 	ImGui::Checkbox("Toggle Flora", &floraOn);
-	ImGui::Checkbox("(orthographic view)", &renderLODchunks);
+	ImGui::Checkbox("(orthographic view)", &orthoCameraEnabled);
 	//ImGui::SliderFloat("thingy", &test, 0.51, 1.999);
 	
 	
@@ -644,8 +705,8 @@ void App1::gui()
 		ImGui::SliderFloat("##cams", camera->getSpeedScale(), 0.5, 400.00, "Camera Speed: %.2f", 3);
 
 
-		if (ImGui::Button("Copy Terrain to CPU")) {
-			
+		if (ImGui::Button("Toggle chunk & quad tree update")) {
+			chunkUpdatesEnabled = !chunkUpdatesEnabled;
 		}
 
 	ImGui::End();
@@ -821,6 +882,8 @@ void App1::initTextures() {
 
 inline void App1::TransferHeightmapToCPU() 
 {
+	// Delete old pixelData
+	//pixelData
 /// Create a 'resource' that is able to be accessed & read on the CPU; a copy of the heightmap texture
 	//Getting the resources of the texture view
 	ID3D11Resource* textureResourceCPU = nullptr;

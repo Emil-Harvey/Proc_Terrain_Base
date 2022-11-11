@@ -15,7 +15,8 @@ class TerrainShader :
 		float Amplitude;
 
 		XMFLOAT2 GlobalPosition;
-		XMFLOAT2 padding = { 0,0 }; /// maybe just use ShaderVariables??
+		float PlanetDiameter;
+		float padding =  0; /// maybe just use ShaderVariables??
     };
 public:
     TerrainShader(ID3D11Device* device, HWND hwnd);

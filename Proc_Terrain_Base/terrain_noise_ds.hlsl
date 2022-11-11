@@ -17,7 +17,7 @@ cbuffer DataBuffer : register(b1)
     float3 manipulationDetails;
     float2 globalPosition;/// 
     float planetDiameter;
-    float padding_;
+    float flags;
 };
 cbuffer CameraBuffer : register(b2)
 {
@@ -164,15 +164,17 @@ OutputType main(ConstantOutputType input, float2 uvwCoord : SV_DomainLocation, c
     
     if (abs(output.world_position.x) < 7500.0 && abs(output.world_position.z) < 7500.0) {
         heightmapSampled = HEIGHT.SampleLevel(s0, (output.world_position.xz / 15000.0) + 0.5, 0);// vertexPosition.xz//
-        //output.world_position.y = heightmapSampled.a;
+        if (flags <0)
+            output.world_position.y = heightmapSampled.a;
     }
     else {
         heightmapSampled = HEIGHT.SampleLevel(s0, (output.world_position.xz / 45000.0) + 0.5, 0);// vertexPosition.xz//
-        //output.world_position.y = heightmapSampled.b;
+        if (flags < 0)
+            output.world_position.y = heightmapSampled.b;
     }
 
     //       CALCULATE NORMALS              Send the normal, light into the ps
-    if (octaves > 6)//
+    if (octaves > 3)//
     {
         ////output.normal.xyz = heightmapSampled.rgb;
         output.normal = calculateNormal(output.world_position.xz);
@@ -204,7 +206,7 @@ OutputType main(ConstantOutputType input, float2 uvwCoord : SV_DomainLocation, c
         // flat to cliff attenuation
     output.steepness = saturate(pow(saturate(slope) + 0.18 + (0.12 * bfm(scale * seedc.xz / (scale * 12), 4)), 10));
 
-    if (output.steepness < 0.016 && octaves > 6){// add real roughness to steep slopes
+    if (flags < 0 && output.steepness < 0.016 && octaves > 6){// add real roughness to steep slopes
         output.world_position.xyz += (1- output.steepness) * 4.8 * log(scale-1.0) * output.normal * perlin(seedc.xz / (scale * 800.1171));
         if (octaves > 9) {
             output.world_position.xyz += 0.592 * scale * output.normal * perlin(seedc.xz / (scale * 1.1171));
@@ -240,7 +242,7 @@ OutputType main(ConstantOutputType input, float2 uvwCoord : SV_DomainLocation, c
     // this represents temperature/climate, specifically how cold
     output.snowness = pow(saturate(0.5 / scale * (0.2 * altitude - 7.1181*bfm(seedc.xz / (scale * 20), 3) - snowline)), 3.0 );
     //  apply deep snow effect on flat ground (raise vertices)
-    output.world_position.y += max(output.snowness * output.steepness - 0.5, 0) * scale;
+   /// output.world_position.y += max(output.snowness * output.steepness - 0.5, 0) * scale;
     
     /*DEBUG: output.snowness = HEIGHT.SampleLevel(s0, (output.world_position.zx / 11520.0) + 0.5, 0).b;//heightmapSampled.b;*/
     
@@ -259,7 +261,7 @@ output.humidity += pow((output_humidity - 0.5) * 1.75, 5) + 0.45;// shift most v
         output.snowness = 0.0; // avoid snow underwater lol
     }
 //      noise to determine between plains and woodland, slightly higher chance of the former
-    output.noise2 =  -0.1+ 1.2*saturate(output.humidity * pow(1 - bfm(seedc.xz / (scale * 29), 4), 3));
+    output.noise2 =  -0.1+ 1.2*saturate(output.humidity * pow(1 - bfm(seedc.xz / (scale * 59), 4), 3));
 
     // similar noise for beach pebbles, but offset by 99 so the noise does not line up
     output.noise = saturate(pow(1 - bfm(seedc.xz / (scale * 60), 3), 3)+perlin(seedc.xz / (scale * 211.1171))+ 0.3);//pow(saturate(1 - bfm(99 + coords / (scale * 12), 4)), 3);
@@ -272,7 +274,7 @@ output.humidity += pow((output_humidity - 0.5) * 1.75, 5) + 0.45;// shift most v
     output.blendweights = abs(output.normal);
     const float plateauSize = 0.2;
     const float transitionSpeed = 51.0;
-    const float texScale = 0.0625;
+    const float texScale = 0.125;
     const float nLength = 0.5;//?
     output.blendweights = output.blendweights - plateauSize;
     output.blendweights = pow(saturate(output.blendweights), transitionSpeed);

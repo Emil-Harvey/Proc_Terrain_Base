@@ -1,6 +1,8 @@
 // Application.h
-#ifndef _APP1_H
-#define _APP1_H
+#pragma once
+
+#define CPU_TERRAIN_ENABLED //when this is enabled, heightmap is trasferred to CPU and mesh is displaced there.
+//#undef CPU_TERRAIN_ENABLED
 
 // Includes
 #include "DXF.h"	// include dxframework
@@ -104,7 +106,8 @@ private:
 	float timescale = 1.0;
 	// bools
 	bool floraOn = false;
-	bool renderLODchunks = false;
+	bool orthoCameraEnabled = false;
+	bool chunkUpdatesEnabled = true;
 	//bool autoSmooth = true;
 	bool DepthOfField;
 	bool erosion_enabled = false;
@@ -139,5 +142,5 @@ private:
 	std::array<XMFLOAT4, 1600 * 1600> pixelData{};
 };
 
-#endif
+
 

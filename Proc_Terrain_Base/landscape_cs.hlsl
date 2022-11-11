@@ -157,7 +157,7 @@ float get_alt_terrain_height(float2 input, float octaves) // a revised terrain a
     
     height = ((continental_noise * height) - (3.8f * continental_noise * continental_noise * continental_noise)) * scale * 3.0;
     
-    return (height + pow(height,3.0)/(20000* scale *scale));//*(clamp(subcontinent_noise / (scale * max(scale,1.0)), 1.0, 2.0)-0.0 );//
+    return (height + clamp(pow(height,3.0),height*2.f, 0));//*(clamp(subcontinent_noise / (scale * max(scale,1.0)), 1.0, 2.0)-0.0 );//
 }
 
 

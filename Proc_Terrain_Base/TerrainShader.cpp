@@ -127,15 +127,22 @@ void TerrainShader::setShaderParameters(ID3D11DeviceContext* deviceContext, cons
 	result = deviceContext->Map(chunkBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 	TerrainDataBufferType* tessPtr;
 	tessPtr = (TerrainDataBufferType*)mappedResource.pData;
+	tessPtr->seed = SVars->seed;//n_Offset;// seed/noise Offset //{ 0.0,0.0 };
+	tessPtr->Scale = SVars->Scale;//scale;
+	tessPtr->TimeOfYear = SVars->TimeOfYear;//timeOfYear;
 	tessPtr->TessellationFactor = SVars->TessellationFactor; //(int)TD.x;// tessellation Factor;
-	tessPtr->Amplitude = SVars->Amplitude;//TD.y;// amplitude;
 	tessPtr->LODfar = SVars->LODfar;//TD.w;// LOD near threshold (distance)
 	tessPtr->LODnear = SVars->LODnear;//TD.z;// LOD far threshold (distance)
-	tessPtr->seed = SVars->seed;//n_Offset;// seed/noise Offset //{ 0.0,0.0 };
-	tessPtr->TimeOfYear = SVars->TimeOfYear;//timeOfYear;
-	tessPtr->Scale = SVars->Scale;//scale;
+	tessPtr->Amplitude = SVars->Amplitude;//TD.y;// amplitude;
 	tessPtr->GlobalPosition = SVars->GlobalPosition;
-	tessPtr->padding.x = SVars->PlanetDiameter;
+	tessPtr->PlanetDiameter = SVars->PlanetDiameter;
+
+#ifndef CPU_TERRAIN_ENABLED
+	tessPtr->padding = 1;
+#else
+	tessPtr->padding = -1;
+#endif // CPU_TERRAIN_ENABLED
+
 	deviceContext->Unmap(chunkBuffer, 0);
 
 	deviceContext->HSSetConstantBuffers(0, 1, &chunkBuffer);// hs
