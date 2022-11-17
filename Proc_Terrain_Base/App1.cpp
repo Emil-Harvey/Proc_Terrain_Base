@@ -263,29 +263,30 @@ bool App1::frame()
 	/// check for chunk update
 	if(chunkUpdatesEnabled){
 	// if player moves to chunk border, reset position (relative to chunk) & update global offset (not seed) - illusion of seamless/infinite movement
-	static const int chunk = 1920*2;
+	static const int chunk = 2050*2;
+	const float xxxg = 3.1f;// idk why this is a random number it should be 1
 	if (camera->getPosition().x < -chunk) 
 	{
-		vars.GlobalPosition.x -= chunk;
+		vars.GlobalPosition.x -= chunk * xxxg;
 		camera->setPosition(camera->getPosition().x + chunk, camera->getPosition().y, camera->getPosition().z);//	  reset player to center of mesh (originally planned to set to opposite edge of mesh)
 		renderMinimap();// regenerate terrain
 	}
 	else if (camera->getPosition().x > chunk)
 	{
-		vars.GlobalPosition.x += chunk;
+		vars.GlobalPosition.x += chunk * xxxg;
 		camera->setPosition(camera->getPosition().x - chunk, camera->getPosition().y, camera->getPosition().z);
 		renderMinimap();
 	}
 
 	if (camera->getPosition().z < -chunk) // negative z (south)
 	{
-		vars.GlobalPosition.y -= chunk;
+		vars.GlobalPosition.y -= chunk * xxxg;
 		camera->setPosition(camera->getPosition().x, camera->getPosition().y, camera->getPosition().z + chunk);
 		renderMinimap();
 	}
 	else if (camera->getPosition().z > chunk) // north
 	{
-		vars.GlobalPosition.y += chunk;
+		vars.GlobalPosition.y += chunk * xxxg;
 		camera->setPosition(camera->getPosition().x, camera->getPosition().y, camera->getPosition().z - chunk);
 		renderMinimap();
 	}
@@ -294,7 +295,7 @@ bool App1::frame()
 	static XMFLOAT2 old_camera_xz;
 	if(camera_xz.x != old_camera_xz.x && camera_xz.y != old_camera_xz.y)
 		qt_Terrain->Reconstruct(renderer->getDevice(), renderer->getDeviceContext(), 4, camera_xz);
-	old_camera_xz = camera_xz;
+		old_camera_xz = camera_xz;
 	}
 
 	// Render the graphics.
@@ -457,7 +458,7 @@ void App1::firstPass()
 	XMMATRIX worldMatrix, viewMatrix, projectionMatrix;
 
 	//water
-	static const XMMATRIX waterScaleMatrix = XMMatrixScaling(45000 , 1.0, 45000 );
+	static const XMMATRIX waterScaleMatrix = XMMatrixScaling(45000 , 1.0f, 45000 );
 	
 	// Get the world, view, projection, and ortho matrices from the camera and Direct3D objects.
 	worldMatrix = renderer->getWorldMatrix();
@@ -466,14 +467,14 @@ void App1::firstPass()
 
 
 	////////
-	float lengthOfDay = -12 * sin(vars.GlobalPosition.y) * cos(vars.TimeOfYear / 57.29577);// replace -6 [-1] w/ -12*sin(latitude)  <--- to be moved to PS?
+	float lengthOfDay = -12 * sin(vars.GlobalPosition.y) * cos(vars.TimeOfYear / 57.29577f);// replace -6 [-1] w/ -12*sin(latitude)  <--- to be moved to PS?
 ///
-	float sunAltitude = lengthOfDay - (cos(time / 3.81) / 0.8);// necessary for sun mesh position
+	float sunAltitude = lengthOfDay - (cos(time / 3.81f) / 0.8f);// necessary for sun mesh position
 
 
 // Clear the scene. 
-	renderer->beginScene(0.3, 0.3, 0.3, 1.0f);
-	light->setDiffuseColour(1, 0.98, 0.96, 1.0);
+	renderer->beginScene(0.3f, 0.3f, 0.3f, 1.0f);
+	light->setDiffuseColour(1, 0.98f, 0.96f, 1.0f);
 
 
 
@@ -491,8 +492,15 @@ void App1::firstPass()
 	renderer->set2SidedMode(false);
 
 	///*// test sphere -- SUN
-	sun_mesh->sendData(renderer->getDeviceContext());//						  	
-	XMMATRIX testTranslation = XMMatrixTranslation(-1000 * sin(time / 3.81), 1000* sunAltitude, 1000 * -sin((time / 3.81) + 1.78) / (1.75 + sin(vars.TimeOfYear / 57.29577)));//XMMatrixTranslation(testPosition.x, testPosition.y, testPosition.z);	
+	sun_mesh->sendData(renderer->getDeviceContext());//		
+	XMFLOAT3 sunPos = { 
+		-sin(time / 3.81f), 
+		sunAltitude,
+		-sin((time / 3.81f) + 1.78f) / (1.75f + sin(vars.TimeOfYear / 57.29577f)) 
+	};
+	XMStoreFloat3( &sunPos, XMVector3Normalize(XMLoadFloat3(&sunPos)));
+	XMMATRIX testTranslation = XMMatrixTranslation(sunPos.x*1000, sunPos.y*1000, sunPos.z*1000);
+
 	testTranslation = XMMatrixMultiply(testTranslation, cameraPositionMatrix);
 	sunShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(XMMatrixMultiply(worldMatrix, XMMatrixScaling(10, 10, 10)), testTranslation), viewMatrix, projectionMatrix, nullptr);// light, camera, terrains[0]->GetChunkPosition(), scale, timeOfYear);
 	sunShader->render(renderer->getDeviceContext(), sun_mesh->getIndexCount());
@@ -526,27 +534,27 @@ void App1::firstPass()
 
 		/// grass
 		f_Terrain->sendData(renderer->getDeviceContext());//worldMatrix//m_TerrainMatrix)
-		treeShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(worldMatrix, XMMatrixMultiply(XMMatrixScaling(5, 1.0, 5), XMMatrixTranslation(int(camera->getPosition().x) - 700.0, 0, int(camera->getPosition().z) - 700.0))), viewMatrix, projectionMatrix, macroTexture, trees, light, camera, &vars, csLand->getSRV());
+		treeShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(worldMatrix, XMMatrixMultiply(XMMatrixScaling(5, 1.0f, 5), XMMatrixTranslation(int(camera->getPosition().x) - 700.0f, 0, int(camera->getPosition().z) - 700.0))), viewMatrix, projectionMatrix, macroTexture, trees, light, camera, &vars, csLand->getSRV());
 		treeShader->render(renderer->getDeviceContext(), f_Terrain->getIndexCount());
 
 		/// trees
 		f_Terrain->sendData(renderer->getDeviceContext());//worldMatrix//m_TerrainMatrix)
-		treeShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(worldMatrix, XMMatrixMultiply(XMMatrixScaling(15, 1.0, 15), XMMatrixTranslation(int(camera->getPosition().x) - 2100.0, 0, int(camera->getPosition().z) - 2100.0))), viewMatrix, projectionMatrix, macroTexture, trees, light, camera, &vars, csLand->getSRV(), true);
+		treeShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(worldMatrix, XMMatrixMultiply(XMMatrixScaling(15, 1.0f, 15), XMMatrixTranslation(int(camera->getPosition().x) - 2100.0f, 0, int(camera->getPosition().z) - 2100.0))), viewMatrix, projectionMatrix, macroTexture, trees, light, camera, &vars, csLand->getSRV(), true);
 		treeShader->render(renderer->getDeviceContext(), f_Terrain->getIndexCount());
 		//renderer->setAlphaBlending(false);
 	}
 
 	/// render water
-	//renderer->setAlphaBlending(true);
+	renderer->setAlphaBlending(true);
 
-	m_Water->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);//								vars.vars.
-	waterShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(worldMatrix, waterScaleMatrix), viewMatrix, projectionMatrix, textures[4], light, camera, XMFLOAT4(tessellationFactor, waterAmplitude, LODnear, LODfar), time);
-	waterShader->render(renderer->getDeviceContext(), m_Water->getIndexCount());
+//	m_Water->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);//								vars.vars.
+//	waterShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(worldMatrix, waterScaleMatrix), viewMatrix, projectionMatrix, textures[4], light, camera, XMFLOAT4(tessellationFactor, waterAmplitude, LODnear, LODfar), time);
+//	waterShader->render(renderer->getDeviceContext(), m_Water->getIndexCount());
 	//renderer->setAlphaBlending(false);
 
 	///	clouds (and rain..)
 	//
-	renderer->setAlphaBlending(true);
+	//renderer->setAlphaBlending(true);
 	
 	m_clouds->sendData(renderer->getDeviceContext()); //
 	cloudShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(XMMatrixMultiply(worldMatrix, XMMatrixRotationX(0)), XMMatrixMultiply( XMMatrixScaling(2048.0, 1.0, 2048.0), XMMatrixTranslation(-14000, 1700.0, -14000.0))), viewMatrix, projectionMatrix, cloudTexture, vars.TimeOfYear);
@@ -621,7 +629,7 @@ void App1::gui()
 	
 	
 	//ImGui::Text("\nHigher scale 'magnifies' the terrain");
-	ImGui::SliderFloat("##Scale", &vars.Scale, 0.01, 50, "Scale: %.4f", 2.5f);
+	ImGui::SliderFloat("##Scale", &vars.Scale, 0.01f, 50, "Scale: %.4f", 2.5f);
 
 		ImGui::Text("Seed:");
 		ImGui::SliderFloat("##x", &vars.seed.x, 0, 980000, "X Offset: %.2f");
@@ -643,7 +651,7 @@ void App1::gui()
 
 	}
 
-	ImGui::SliderFloat("##latitude", &vars.GlobalPosition.y, -2.0*vars.PlanetDiameter, 2.0*vars.PlanetDiameter, "Latitude: %.2f", 3.0f);
+	ImGui::SliderFloat("##latitude", &vars.GlobalPosition.y, -2.0f*vars.PlanetDiameter, 2.0f*vars.PlanetDiameter, "Latitude: %.2f", 3.0f);
 	ImGui::SliderFloat("##Planetdiameter", &vars.PlanetDiameter, 50, 127420, "Planet Diameter: %.2f", 5.0f);
 
 	
@@ -660,7 +668,7 @@ void App1::gui()
 	ImGui::Begin("Minimap", NULL, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar);
 		ImGui::Text("(%.2f, %.2f)", vars.GlobalPosition.x, vars.GlobalPosition.y);
 		ImGui::SameLine();
-		if (ImGui::ArrowButton("zoom+", ImGuiDir_Up) && mapZoom < 80) {
+		if (ImGui::ArrowButton("zoom+", ImGuiDir_Up) && mapZoom <= 80) {
 			mapZoom++;
 		}ImGui::SameLine();
 		if (ImGui::ArrowButton("zoom-", ImGuiDir_Down) && mapZoom > 1) {
@@ -695,14 +703,14 @@ void App1::gui()
 		ImGui::SameLine();
 		ImGui::SliderFloat("##time", &time, 0.0, 24.00, "Time: %5.2f");
 		int day = int(vars.TimeOfYear);
-		ImGui::SliderInt("##date", &day, 0.0, 360.00, "Time of Year: %5.2f");
-		vars.TimeOfYear = day + (time/24.00);//
+		ImGui::SliderInt("##date", &day, 0.0f, 360.00f, "Time of Year: %5.2f");
+		vars.TimeOfYear = day + (time/24.00f);//
 		//ImGui::SameLine();
-		ImGui::SliderFloat("##timescale", &timescale, 0.02777777, 1200, "x %5.2f", 5.0f);
+		ImGui::SliderFloat("##timescale", &timescale, 0.02777777f, 1200, "x %5.2f", 5.0f);
 	ImGui::End();
 
 	ImGui::Begin("Options", &gameSettingsMenuActive);
-		ImGui::SliderFloat("##cams", camera->getSpeedScale(), 0.5, 400.00, "Camera Speed: %.2f", 3);
+		ImGui::SliderFloat("##cams", camera->getSpeedScale(), 0.5f, 600.00f, "Camera Speed: %.2f", 3);
 
 
 		if (ImGui::Button("Toggle chunk & quad tree update")) {
@@ -756,9 +764,9 @@ void App1::initTextures() {
 	
 	//auto xzzj = textures;
 //*
-	///textureMgr->loadTexture(L"rock_c", L"res/lofi textures/rock_/rock_c.png");
+	textureMgr->loadTexture(L"rock_c", L"res/lofi textures/rock_/rock_c.png");
 	//textureMgr->loadTexture(L"rock_h", L"res/nice textures/rock_/rock_h.png");
-	///textureMgr->loadTexture(L"rock_n", L"res/nice textures/rock_/rock_nh.png");
+	textureMgr->loadTexture(L"rock_n", L"res/nice textures/rock_/rock_nh.png");
 	//textureMgr->loadTexture(L"rock_s", L"res/nice textures/rock_/rock_s.png");
 	//
 	textureMgr->loadTexture(L"snow_c", L"res/nice textures/snow_/snow_as.png");
@@ -881,12 +889,12 @@ void App1::initTextures() {
 }
 
 inline void App1::TransferHeightmapToCPU() 
-{
+{//*
 	// Delete old pixelData
 	//pixelData
 /// Create a 'resource' that is able to be accessed & read on the CPU; a copy of the heightmap texture
 	//Getting the resources of the texture view
-	ID3D11Resource* textureResourceCPU = nullptr;
+	
 	ID3D11Resource* textureResourceGPU = nullptr;
 	ID3D11Texture2D* textureInterface = nullptr;
 
@@ -912,7 +920,7 @@ inline void App1::TransferHeightmapToCPU()
 	renderer->getDeviceContext()->CopyResource(staging_texture, textureResourceGPU);
 
 	HRESULT h;
-	h = renderer->getDeviceContext()->Map(staging_texture, 0, D3D11_MAP_READ, 0, &heightmap_mappedResource); //
+	h = renderer->getDeviceContext()->Map(staging_texture, 0, D3D11_MAP_READ, 0, &heightmap_mappedResource); // this line causes memory leak
 
 	// heightmap_mappedResource.RowPitch contains the value that the runtime adds to pData to move from row to row, where each row contains multiple pixels.
 
@@ -927,8 +935,11 @@ inline void App1::TransferHeightmapToCPU()
 		for (int pixel = 0; pixel < MAP_DIM; pixel++) {
 			const int pixel_number = pixel + (row * MAP_DIM);
 			pixelData[pixel_number] = (XMFLOAT4)((XMFLOAT4*)heightmap_mappedResource.pData)[pixel_number];
-			}
+		}
 	}
 
-	qt_Terrain->SetHeightmap(&pixelData); 
+	//qt_Terrain->SetHeightmap(&pixelData); // not even needed
+	//delete textureResourceGPU;
+	//delete textureInterface;*/
+	//return h;
 }

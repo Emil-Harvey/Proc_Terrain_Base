@@ -156,8 +156,8 @@ float get_alt_terrain_height(float2 input, float octaves) // a revised terrain a
     //...
     
     height = ((continental_noise * height) - (3.8f * continental_noise * continental_noise * continental_noise)) * scale * 3.0;
-    
-    return (height + clamp(pow(height,3.0),height*2.f, 0));//*(clamp(subcontinent_noise / (scale * max(scale,1.0)), 1.0, 2.0)-0.0 );//
+    float curved_height = 0 +pow(height / (40.f * scale), 2.0f) * 40.f * sign(height);
+    return lerp(height, curved_height, saturate(roughness_noise + subcontinent_noise + (0.2*valley_noise)));//(height + clamp(pow(height,3.0),height*2.f, 0));//*(clamp(subcontinent_noise / (scale * max(scale,1.0)), 1.0, 2.0)-0.0 );//
 }
 
 

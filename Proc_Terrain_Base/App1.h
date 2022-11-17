@@ -51,7 +51,7 @@ protected:
 
 	void TransferHeightmapToCPU();
 
-	float lerp(float a,float b,float x){
+	static inline float lerp(float a,float b,float x){
 		return (a + x * (b - a));
 	}
 
@@ -98,12 +98,12 @@ private:
 	///int octaves = 3;
 
 	// misc
-	float test = 0.1;
+	float test = 0.1f;
 	// TOD sim
-	float time = 11.00;
+	float time = 11.00f;
 	bool unpaused = true;
 	//float timeOfYear = 54.0;//
-	float timescale = 1.0;
+	float timescale = 1.0f;
 	// bools
 	bool floraOn = false;
 	bool orthoCameraEnabled = false;
@@ -120,9 +120,9 @@ private:
 	///float erosionRate = 0.4f;
 	// water mesh
 	const float LODnear= 0;
-	const float LODfar= 20.0;
+	const float LODfar= 20.0f;
 	const int tessellationFactor =6;
-	const float waterAmplitude = 1.5;
+	const float waterAmplitude = 1.5f;
 	//sphere
 	XMFLOAT3 testPosition = { 0,-16,0 };
 	bool gameSettingsMenuActive = false;

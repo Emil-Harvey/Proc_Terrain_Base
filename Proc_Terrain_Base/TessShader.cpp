@@ -24,7 +24,7 @@ void TessShader::initShader(const wchar_t* vsFilename, const wchar_t* hsFilename
 	if (!GeoShaderActive) {
 		loadDomainShader(dsFilename);
 	}
-	else {//		Load the geo shader optionally
+	else {//		Load the geo shader optionally ( this may be deprecated feature)
 		loadDomainShader(L"shaders/grass_ds.cso");
 		loadGeometryShader(gsFilename);
 	}

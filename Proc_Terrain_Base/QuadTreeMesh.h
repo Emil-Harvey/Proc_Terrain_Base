@@ -18,7 +18,7 @@ class QuadtreeNode {
     XMFLOAT2 position;
     float size;
     std::array<unique_ptr<QuadtreeNode>, 4> subNodes{};  //QuadtreeNode* subNodes[4] = { NULL };
-    TessellationPlane* geometry = nullptr;
+    TessellationTerrain* geometry = nullptr;
 
 public:
     static float total_size;

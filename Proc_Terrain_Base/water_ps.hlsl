@@ -43,7 +43,9 @@ float perlin(float2 world_position, float speed);
 float3 calculateNormals(float2 pos)//,float h = 1.0 / 200.0f)
 {
     int octaves = int(lerp(3.5, 1, saturate(length(viewpos.xz - pos) / 495.0)));
-    
+    if (octaves <= 0)
+        return float3(0, 1, 0);
+
     float h = 1.0 / 97.0f; // 1/size of plane/quad (arbitrary)
     
     //calculate the tangent & bitangent using the heightMap    
@@ -61,7 +63,8 @@ float3 calculateNormals(float2 pos)//,float h = 1.0 / 200.0f)
     //float zdy = 0.75 * perlin(uz / 2.0,  34.0) - 0.75 * perlin(vz / 2.0, 34.0);
     bitangent = normalize(float3(0, zdy, -2 * h));
     
-    return normalize(cross(tangent, bitangent));
+    float3 normal = normalize(cross(tangent, bitangent));
+    return lerp(normal, float3(0, 1, 0), saturate(length(viewpos.xz - pos) / 495.0));
     
 }
 

@@ -20,7 +20,7 @@ void QuadTreeMesh::render(ID3D11DeviceContext* dc, TerrainShader* shader, const 
     this->size = size;
 
 #ifndef CPU_TERRAIN_ENABLED
-    const int resolution = 11;// has to be odd. also some numbers don't work, not sure why
+    const int resolution = 7;// has to be odd. also some numbers don't work, not sure why
     geometry = new TessellationTerrain(d, dc, heightmap, pos, size, total_size, posOfDetail, resolution);
 #else
     const int resolution = 6;
@@ -93,7 +93,7 @@ void QuadTreeMesh::render(ID3D11DeviceContext* dc, TerrainShader* shader, const 
             const XMMATRIX positionMatrix = XMMatrixTranslation(position.x, 0.0, position.y);
             const XMMATRIX scaleMatrix = XMMatrixScaling(size, 1.0, size);
             const XMMATRIX transformMatrix = XMMatrixMultiply(scaleMatrix, positionMatrix);
-            geometry->sendData(dc, D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);
+            geometry->sendData(dc, D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST);//
             shader->setShaderParameters(dc, XMMatrixMultiply(transformMatrix, world), view, projection, textures, light, camera, SVars, heightmap);
             shader->render(dc, geometry->getIndexCount());
             shader->unbind(dc);

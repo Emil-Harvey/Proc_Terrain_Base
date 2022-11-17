@@ -45,7 +45,7 @@ void PlaneMesh::initBuffers(ID3D11Device* device)
 	{
 		for (i = 0; i<(resolution - 1); i++)
 		{
-			// Upper left.
+			// lower left.
 			positionX = (float)i;
 			positionZ = (float)(j);
 
@@ -66,7 +66,7 @@ void PlaneMesh::initBuffers(ID3D11Device* device)
 			index++;
 
 
-			// lower left
+			// upper left
 			positionX = (float)(i);
 			positionZ = (float)(j + 1);
 			
@@ -77,7 +77,7 @@ void PlaneMesh::initBuffers(ID3D11Device* device)
 			indices[index] = index;
 			index++;
 
-			// Upper left
+			// lower left
 			positionX = (float)(i);
 			positionZ = (float)(j);
 

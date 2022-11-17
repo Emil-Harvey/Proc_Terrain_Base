@@ -30,8 +30,8 @@ SamplerState s0 : register(s0);
 
 struct ConstantOutputType
 {
-    float edges[4] : SV_TessFactor;
-    float inside[2] : SV_InsideTessFactor;
+    float edges[3] : SV_TessFactor;// 3 or 4
+    float inside[1] : SV_InsideTessFactor;// 1 or 2
 };
 
 struct InputType
@@ -66,6 +66,17 @@ struct OutputType
 float bfm(float2 pos, int octaves);
 float perlin(float2 world_position, float speed = 0);
 float terragen(float2 coords, int octs);
+
+float3 BarycentricInterpolate(float3 v0, float3 v1, float3 v2, float3 barycentric)
+{
+    return barycentric.z * v0 + barycentric.x * v1 +
+        barycentric.y * v2;
+}
+float3 BarycentricInterpolate(float3 v[3], float3 barycentric)
+{
+    return BarycentricInterpolate(v[0], v[1], v[2],
+        barycentric);
+}
 
 float invsmoothstep(float y)
 {// fast inverse
@@ -119,18 +130,19 @@ float3 calculateNormal(float2 pos, float h = 5.0 / 5.0f)
     return normalize(cross(tangent, bitangent));
 }
 
-[domain("quad")]
-OutputType main(ConstantOutputType input, float2 uvwCoord : SV_DomainLocation, const OutputPatch<InputType, 4> patch)// patch should be 3 for tri, 4 for quad etc
+[domain("tri")]// tri, quad
+OutputType main(ConstantOutputType input, float3 uvwCoord : SV_DomainLocation, const OutputPatch<InputType, 3> patch)// patch should be 3 for tri, 4 for quad etc
 {
     float3 vertexPosition;
     OutputType output;
 
     // Determine the position of the new vertex.
-    // bilinear interpolation: 
+    /*/ bilinear interpolation: 
     vertexPosition = lerp( // lerp the "horizontal" positions by the "vertical" one
-        lerp(patch[0].position, patch[1].position, uvwCoord.y),
-        lerp(patch[3].position, patch[2].position, uvwCoord.y),
-        uvwCoord.x);
+        lerp(patch[0].position, patch[1].position, uvwCoord.y),// [0] , [1]
+        lerp(patch[2].position, patch[3].position, uvwCoord.y),// [2] , [3]
+        uvwCoord.x); //*/
+    vertexPosition = BarycentricInterpolate(patch[0].position, patch[1].position, patch[2].position, uvwCoord);
     output.position = float4(vertexPosition, 1.0f);
 
    /// output.tex = 64 *uvwCoord / scale;//vertexPosition.xz / 30; //
@@ -184,10 +196,11 @@ OutputType main(ConstantOutputType input, float2 uvwCoord : SV_DomainLocation, c
     else // this mesh is not being manipulated, so keep the normals as they were
     {
         // calculate un-displaced normals
-        output.normal = lerp( // bilinear interpolation
+        /*output.normal = lerp( // bilinear interpolation
             lerp(patch[0].normal, patch[1].normal, uvwCoord.y),
             lerp(patch[3].normal, patch[2].normal, uvwCoord.y),
-            uvwCoord.x);
+            uvwCoord.x);//*/
+        output.normal = BarycentricInterpolate(patch[0].normal, patch[1].normal, patch[2].normal, uvwCoord);
     }
     //*
     ///     CALCULATE 'GEOGRAPHIC VARIABLES'

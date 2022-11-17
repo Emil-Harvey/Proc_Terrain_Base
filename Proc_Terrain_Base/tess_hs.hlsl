@@ -34,8 +34,8 @@ struct InputType
 
 struct ConstantOutputType
 {
-    float edges[4] : SV_TessFactor;
-    float insides[2] : SV_InsideTessFactor;
+    float edges[3] : SV_TessFactor;// 3 - tri, 4 - quad
+    float insides[1] : SV_InsideTessFactor;// 1 - tri, 2 quad
 };
 
 struct OutputType
@@ -57,16 +57,16 @@ float calculateLOD(float3 v)// inspired by frank luna
     //tesselation factor will be 2^n, where 0 <= n <= 6 & is based on the distance of the patch (maxing out at 250, with no tess, minimum at 40, with 2^6=64 tes'ns) 
 }
 
-ConstantOutputType PatchConstantFunction(InputPatch<InputType, 4> inputPatch, uint patchId : SV_PrimitiveID)
+ConstantOutputType PatchConstantFunction(InputPatch<InputType, 3> inputPatch, uint patchId : SV_PrimitiveID)
 {
     ConstantOutputType output;
     
-
+    /* if quad: 
     float3 edgePositions[4];
-    edgePositions[0] = (inputPatch[0].worldPosition + inputPatch[1].worldPosition) / 2; // the Western edge of the quad
-    edgePositions[1] = (inputPatch[0].worldPosition + inputPatch[3].worldPosition) / 2; // north edge
-    edgePositions[2] = (inputPatch[2].worldPosition + inputPatch[3].worldPosition) / 2; // east edge
-    edgePositions[3] = (inputPatch[1].worldPosition + inputPatch[2].worldPosition) / 2; //south edge
+    edgePositions[0] = (inputPatch[0].worldPosition + inputPatch[1].worldPosition) / 2.f; // the Western edge of the quad
+    edgePositions[1] = (inputPatch[0].worldPosition + inputPatch[3].worldPosition) / 2.f; // north edge
+    edgePositions[2] = (inputPatch[2].worldPosition + inputPatch[3].worldPosition) / 2.f; // east edge
+    edgePositions[3] = (inputPatch[1].worldPosition + inputPatch[2].worldPosition) / 2.f; //south edge
 
     float tessFactors[5] =
     {
@@ -74,7 +74,7 @@ ConstantOutputType PatchConstantFunction(InputPatch<InputType, 4> inputPatch, ui
                             calculateLOD(edgePositions[1]),
                             calculateLOD(edgePositions[2]),
                             calculateLOD(edgePositions[3]),
-        calculateLOD((edgePositions[0] + edgePositions[2]) / 2)
+        calculateLOD((edgePositions[0] + edgePositions[2]) / 2.f)
     };
     // based on distance to camera, set the tessellation factors for the edges of the quad //triangle. (cannot loop or use conditional statements)
     output.edges[0] = tessFactors[0]; //tessellationFactor;
@@ -82,20 +82,43 @@ ConstantOutputType PatchConstantFunction(InputPatch<InputType, 4> inputPatch, ui
     output.edges[2] = tessFactors[2]; //tessellationFactor;
     output.edges[3] = tessFactors[3]; //tessellationFactor;
     
-    // Set the tessellation factor for tessallating inside the quad 
+    // Set the tessellation factor for tessallating inside the quad /tri
     output.insides[0] = tessFactors[4]; // tessellationFactor;//
     output.insides[1] = output.insides[0]; //tesselationFactor;
+
+    */
+    float3 edgePositions[3];
+    edgePositions[0] = (inputPatch[0].worldPosition + inputPatch[1].worldPosition) / 2.f; // the Western edge of the quad
+    edgePositions[1] = (inputPatch[1].worldPosition + inputPatch[2].worldPosition) / 2.f; // north edge
+    edgePositions[2] = (inputPatch[2].worldPosition + inputPatch[0].worldPosition) / 2.f; //southeast edge
+
+    float tessFactors[4] =
+    {
+        calculateLOD(edgePositions[0]),
+        calculateLOD(edgePositions[1]),
+        calculateLOD(edgePositions[2]),
+        calculateLOD((edgePositions[0] + edgePositions[1] + edgePositions[2]) / 3.f)
+    };
+    // based on distance to camera, set the tessellation factors for the edges of the quad //triangle. (cannot loop or use conditional statements)
+    output.edges[0] = tessFactors[0]; //tessellationFactor;
+    output.edges[1] = tessFactors[1]; //tessellationFactor;
+    output.edges[2] = tessFactors[2]; //tessellationFactor;
+    
+
+    // Set the tessellation factor for tessallating inside the quad /tri
+    output.insides[0] = tessFactors[3]; // tessellationFactor;//
+    //output.insides[1] = output.insides[0]; //tesselationFactor;
 
     return output;
 }
 
 
-[domain("quad")] //tri, quad, isocline
-[partitioning("fractional_even")]//pow2, integer
-[outputtopology("triangle_ccw")]
-[outputcontrolpoints(4)] // the number of times the shader executes. 1 ctrl pt per output
+[domain("tri")] //tri, quad, isocline
+[partitioning("fractional_even")]//fractional_even, fractional_odd, pow2, integer
+[outputtopology("triangle_cw")]
+[outputcontrolpoints(3)] // the number of times the shader executes. 1 ctrl pt per output
 [patchconstantfunc("PatchConstantFunction")]
-OutputType main(InputPatch<InputType, 4> patch, uint pointId : SV_OutputControlPointID, uint patchId : SV_PrimitiveID)// this bit is like the vertex shader
+OutputType main(InputPatch<InputType, 3> patch, uint pointId : SV_OutputControlPointID, uint patchId : SV_PrimitiveID)// this bit is like the vertex shader
 {
     OutputType output;
 

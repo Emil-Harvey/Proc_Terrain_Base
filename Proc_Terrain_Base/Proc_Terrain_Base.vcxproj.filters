@@ -13,6 +13,12 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Resource Files\Terrain Shaders">
+      <UniqueIdentifier>{d99880ee-13ab-486d-b764-cea1ca884a5e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resource Files\Compute Shaders">
+      <UniqueIdentifier>{97fd13f8-fbeb-44fc-9939-008a026fc4ae}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="App1.cpp">
@@ -151,9 +157,6 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="shaders\light_ps.hlsl">
-      <Filter>Resource Files</Filter>
-    </FxCompile>
     <FxCompile Include="shaders\light_vs.hlsl">
       <Filter>Resource Files</Filter>
     </FxCompile>
@@ -172,9 +175,6 @@
     <FxCompile Include="water_ds.hlsl">
       <Filter>Resource Files</Filter>
     </FxCompile>
-    <FxCompile Include="tess_hs.hlsl">
-      <Filter>Resource Files</Filter>
-    </FxCompile>
     <FxCompile Include="water_ps.hlsl">
       <Filter>Resource Files</Filter>
     </FxCompile>
@@ -187,19 +187,7 @@
     <FxCompile Include="texture_vs.hlsl">
       <Filter>Resource Files</Filter>
     </FxCompile>
-    <FxCompile Include="terrain_noise_ds.hlsl">
-      <Filter>Resource Files</Filter>
-    </FxCompile>
     <FxCompile Include="cloud_ps.hlsl">
-      <Filter>Resource Files</Filter>
-    </FxCompile>
-    <FxCompile Include="horizontal_blur_cs.hlsl">
-      <Filter>Resource Files</Filter>
-    </FxCompile>
-    <FxCompile Include="landscape_cs.hlsl">
-      <Filter>Resource Files</Filter>
-    </FxCompile>
-    <FxCompile Include="vertical_blur_cs.hlsl">
       <Filter>Resource Files</Filter>
     </FxCompile>
     <FxCompile Include="cloud_gs.hlsl">
@@ -211,8 +199,26 @@
     <FxCompile Include="depth_ps.hlsl">
       <Filter>Resource Files</Filter>
     </FxCompile>
+    <FxCompile Include="terrain_noise_ds.hlsl">
+      <Filter>Resource Files\Terrain Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="shaders\light_ps.hlsl">
+      <Filter>Resource Files\Terrain Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="horizontal_blur_cs.hlsl">
+      <Filter>Resource Files\Compute Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="vertical_blur_cs.hlsl">
+      <Filter>Resource Files\Compute Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="landscape_cs.hlsl">
+      <Filter>Resource Files\Compute Shaders</Filter>
+    </FxCompile>
     <FxCompile Include="erosion_cs.hlsl">
-      <Filter>Resource Files</Filter>
+      <Filter>Resource Files\Compute Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="tess_hs.hlsl">
+      <Filter>Resource Files\Terrain Shaders</Filter>
     </FxCompile>
   </ItemGroup>
   <ItemGroup>
