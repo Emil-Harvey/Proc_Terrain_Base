@@ -10,13 +10,13 @@ cbuffer DataBuffer : register(b0)
     float3 manipulationDetails;
     float2 globalPosition;/// 
     float planetDiameter;
-    float padding_;
+    float pixel_vertex_scale; //padding_;
 };
 
 Texture2D gInput : register(t0);
 RWTexture2D<float4> gOutput : register(u0);
 
-#define N 10 //256
+#define N 8 //256
 //#define CacheSize (N + 2*gBlurRadius)
 //groupshared float4 gCache[CacheSize];
 
@@ -122,7 +122,7 @@ float get_alt_terrain_height(float2 input, float octaves) // a revised terrain a
 {
     float height = 0;
     const float2 alt_input = input + float2(55.4, 35.1);
-    const float scale_coeff = scale * 30.0;
+    const float scale_coeff = 30.0 * 7.0;
 
     // to start, get some noise that will be used to vary how rough the noises are and much they are distorted.
     const float roughness_noise = saturate(0.4 +0.4 * NoiseTexture(input, 0.16/ scale_coeff, 5, 0.5, 1.5));//bfm(input / scale_coeff,15 );//
@@ -133,8 +133,8 @@ float get_alt_terrain_height(float2 input, float octaves) // a revised terrain a
     height = mountain_noise * valley_noise;//
     
     const float continental_noise = lerp(
-        flow(input / (4900.7 * scale), 5) + (0.2 * bfm(input / (500 * scale), octaves)),
-        1 * (bfm(input / (4900.7 * scale), 6) + (0.2 * NoiseTexture(input, 0.067 / scale_coeff, 8, 0.39589, min(distortion_noise, 0.7)))), perlin(input / (919.7 * scale)));
+        flow(input / (4900.7 * scale_coeff), 5) + (0.2 * bfm(input / (500 * scale_coeff), octaves)),
+        1 * (bfm(input / (4900.7 * scale_coeff), 6) + (0.2 * NoiseTexture(input, 0.067 / scale_coeff, 8, 0.39589, min(distortion_noise, 0.7)))), perlin(input / (919.7 * scale_coeff)));
 
     // the lower this value (0.0), the more 'marbled' the terrain, creating swirly rivers and archipelagos;
     // the higher the value (1.0), the more regular the terrain, far fewer islands or river deltas.
@@ -188,12 +188,20 @@ float3 calculateNormal(float2 pos, int octaves, float h = 1.0 / 50.0f) // ineffi
 void main(int3 groupThreadID : SV_GroupThreadID,
 	int3 dispatchThreadID : SV_DispatchThreadID)
 {
-    const double c = 10.0;// scale factor ->: 1500 * 7.68 = 11520 { the world_position/size of the 3x3 terrain meshes }
-    const float2 coords = { (dispatchThreadID.x * c) + seed.x + globalPosition.x , (dispatchThreadID.y * c) + seed.y + globalPosition.y };
+    const int2 offset_pixel = { dispatchThreadID.x - (4096 / 2), dispatchThreadID.y - (4096 / 2) };
+    const double c = 10.98 * pixel_vertex_scale; // scale factor ->: how many meters does 1 pixel width represent // 15,000/1500 = 10 // 7.68 = 11520 / 1500 { the world_position/size of the 3x3 terrain meshes }
+    const float2 coords = {seed.x + ((offset_pixel.x * c) + globalPosition.x) / scale,
+                           seed.y + ((offset_pixel.y * c) + globalPosition.y) / scale };
+    // coords: scale = 7: pos = 0,0. off_p > -2048 to 2048. *c = -22500to+22500
+    // x: (-22500to+22500)/7. +10000; [= 13214]  y: (-22500to+22500)/7. +10000;
+    // xy += 11250
+    // off_p > -2048 to 2048. *c = -11250to+11250
+    // x = 0 to 22500 etc.
     const float height = get_alt_terrain_height(coords, 20.0);
 
-    const float macroScale = 3.0;
-    const float2 macroCoords = { (((dispatchThreadID.x * c) - 5760) * macroScale) + 5760 + seed.x + globalPosition.x , (((dispatchThreadID.y * c) - 5760) * macroScale) + 5760 + seed.y + globalPosition.y };
+    const float macroScale = 3.0 * scale;
+    const float2 macroCoords = { seed.x + ((dispatchThreadID.x * c) + globalPosition.x) / scale,
+                                 seed.y + ((dispatchThreadID.y * c) + globalPosition.y) / scale };
     const float macro_height = get_alt_terrain_height(macroCoords, 14.0);
 
     // CALCULATE NORMAL
@@ -254,8 +262,8 @@ void main(int3 groupThreadID : SV_GroupThreadID,
 
 	
 
-    output.a = macro_height;//40+sin(degrees(coords.y)) * 40.f;//
-    output.r = height/(100.f*scale);//humidity
+    output.a = height;//40+sin(degrees(coords.y)) * 40.f;//
+    output.r = macro_height /(40.f*scale);//humidity
 
     output.g = slope; // / manipulationDetails.z;
     output.b = macro_height;//0.01 * height / (1+pow(manipulationDetails.z,3));
@@ -267,12 +275,12 @@ void main(int3 groupThreadID : SV_GroupThreadID,
     output.r = 1024.0f;
     output.g = dispatchThreadID.x;
     output.b = dispatchThreadID.y;//*/
-
+    output.rgb = height / 180.f; output.g = macro_height /(40.f*scale);
 	gOutput[dispatchThreadID.xy] = output;
 
     //output = gOutput[(int2)(((dispatchThreadID.xy - 750) * macroScale) + 750)];
-
-    if (false && manipulationDetails.z > 1.0) {
+    
+    /*if (false && manipulationDetails.z > 1.0) {
         output.r = gInput[dispatchThreadID.xy + wind.xy].r * 0.95
             + (gInput[dispatchThreadID.xy + (wind.xy * 2)].r * 0.8)
             + (gInput[dispatchThreadID.xy + (wind.xy * 4)].r * 0.6)
@@ -281,7 +289,7 @@ void main(int3 groupThreadID : SV_GroupThreadID,
             + (gInput[dispatchThreadID.xy + (wind.xy * 16)].r * 0.1);
         output.r /= 400;
         gOutput[dispatchThreadID.xy] = output;
-    }
+    }*/
 }
 
 //////////////////////--------------------------//////////////////////////

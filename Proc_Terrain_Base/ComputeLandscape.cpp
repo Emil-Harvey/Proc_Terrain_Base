@@ -101,6 +101,7 @@ void ComputeLandscape::setShaderParameters(ID3D11DeviceContext* dc, ID3D11Shader
 	tessPtr->Scale = SVars->Scale;
 	tessPtr->GlobalPosition = SVars->GlobalPosition;
 	tessPtr->padding.x = SVars->PlanetDiameter;
+	tessPtr->padding.y = SVars->Amplitude; //pixel_vertex_scale
 	//tessPtr->padding.y = 
 	dc->Unmap(chunkBuffer, 0);
 

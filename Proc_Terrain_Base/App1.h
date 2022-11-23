@@ -2,7 +2,7 @@
 #pragma once
 
 #define CPU_TERRAIN_ENABLED //when this is enabled, heightmap is trasferred to CPU and mesh is displaced there.
-//#undef CPU_TERRAIN_ENABLED
+#undef CPU_TERRAIN_ENABLED
 
 // Includes
 #include "DXF.h"	// include dxframework
@@ -42,7 +42,7 @@ protected:
 	bool render();
 	bool renderMinimap(bool erode_as_well = true);
 	bool erodeTerrain();// maybe move this to other class?
-	void depthPass();
+	//void depthPass();
 	void renderDOF();
 	void firstPass();
 	void finalPass();
@@ -50,8 +50,9 @@ protected:
 	void initTextures();
 
 	void TransferHeightmapToCPU();
+	void QuadtreeHeightmap( QuadtreeNode* node_to_render);//const float size, const XMFLOAT2 position
 
-	static inline float lerp(float a,float b,float x){
+	static inline float lerp(const float& a, const float &b, const float &x){
 		return (a + x * (b - a));
 	}
 
@@ -138,7 +139,7 @@ private:
 	//
 	ID3D11ShaderResourceView* curHeightmapSRV;
 	D3D11_MAPPED_SUBRESOURCE heightmap_mappedResource;
-	const int MAP_DIM = 1600;
+	const int MAP_DIM = 4096;
 	std::array<XMFLOAT4, 1600 * 1600> pixelData{};
 };
 

@@ -16,23 +16,29 @@ static Type* ArrayFromVector(const std::vector< Type >& v)
 
     return result;
 }
+enum Corner // AKA QuadtreeIndex
+{
+    // in binary order- if x>=0: 0, else: 1. same for y but in second digit. ergo +X,+Y = 00; -X,-Y = 11; etc.
+    northeast = 0, // +X, +Y    | false, false; 00
+    southeast = 1, // +X, -Y    | false, true;  01
+    northwest = 2, // -X, +Y    | true, false;  10
+    southwest = 3  // -X, -Y    | true, true;   11
+};
+#define isNorth(corner) (int(corner) & 1) != 1
+#define isEast(corner) (int(corner) & 2) != 2
+// reverse the binary of a 2 bit number: 2 (10) becomes 1 (01) etc
+#define binReverse(b) ((b & 2) >> 1 | (b & 1) << 1)
 
 class TessellationTerrain :
     public PlaneMesh
 {
-    struct EdgeFlags {
-        bool left = true,
-            right = true,
-            front = true,
-            back = true;
-    };
     enum Direction {
         NORTH = 0,
         EAST = 1,
         SOUTH = 2,
         WEST = 3
     };
-    #define GRID_RESOLUTION (resolution - 1) // one less than the vertex resolution
+   
 
 public:
     // pos: position of this mesh's centre, relative to HM edges [0-1].
@@ -41,8 +47,8 @@ public:
     //void SetHeightmap(std::array<char, HEIGHTMAP_RES>* HeightmapType) { _heightmap = HeightmapType; }
 
 protected:
-    void initBuffers(ID3D11Device* device, XMFLOAT2 pos, float size, EdgeFlags flags);
-    bool sampleElevation(int startPixelU, int startPixelV, float _size, float& positionX, float& positionZ, float& elevation, EdgeFlags flags);
+    void initBuffers(ID3D11Device* device, XMFLOAT2 pos, float size);
+    static void sampleElevation(int startPixelU, int startPixelV, float _size, float& positionX, float& positionZ, float& elevation);
     
     static void BuildEdge(std::vector<VertexType> &vertices, Direction dir, const int detail_difference);
 
@@ -54,34 +60,81 @@ protected:
             (startPixelV + (positionZ * _size * HEIGHTMAP_DIM)) * HEIGHTMAP_DIM,
             HEIGHTMAP_DIM * HEIGHTMAP_DIM - 1);
     }
-    /*static void RotateIndices(int& x, int& y, const Direction rotation)
+    static void RotateIndices(int& x, int& y, const Direction rotation)
     {
         // 'rotates' mesh indices so they fit with the side given, north is default
         switch (rotation)
         {
-        case NORTH:
+        case NORTH: // no rotation
         default:
             return;
-        case EAST:
+        case EAST: // reflect diagonally
             swap(x, y);
-            y = GRID_RESOLUTION - y;
+            y = grid_resolution -1 - y;
             return;
-        case SOUTH:
-            x = GRID_RESOLUTION - x;
-            y = GRID_RESOLUTION - y;
+        case SOUTH: // flip both
+            //x = grid_resolution -1 - x;
+            y = grid_resolution -1 - y;
             return;
-        case WEST:
+        case WEST: // reflect diagonally, flip horizontally
             swap(x, y);
-            x = GRID_RESOLUTION - x;
+            x = grid_resolution -1 - x;
             return;
         }
-    }*/
+    }
+    static Corner RotateCorner(Corner c, Direction rotation) {
+        switch (rotation)
+        {
+        case NORTH:
+        default:
+            return c; // no rotation
+        case EAST:
+            if (c == 3) return northwest;
+            return Corner( binReverse(int(c)) ^ 1 ); // reflect diagonally, flip
+        case SOUTH:
+            return Corner(int(c)^1); // flip both axes
+        case WEST:
+            if (c == 3) return southeast;
+            return Corner( binReverse(int(c)) ^ 2 ); // reflect diagonally, flip horizontally
+        }
+    }
+    static void AddVertex(const int& startPixelU, const int& startPixelV, const float& u, const float& v, const float& x, const float& y, const float& size, int& index, std::vector<VertexType>& vertices, std::vector<unsigned long>& indices, Corner corner) {
+        float elevation = 0.5f;
+        static const float increment = 1.0f / float(grid_resolution+1);
+        static const float unit = 0.5;
+        float positionX, positionZ;
+        //positionX = (float)(isEast(corner) ? x + unit : x - unit) / float(grid_resolution);
+        //positionZ = (float)(isNorth(corner)? y + unit : y - unit) / float(grid_resolution);
+        if (isEast(corner)) {
+            positionX = (float)( x + unit ) / float(grid_resolution);
+        }
+        else {
+            positionX = (float)( x - unit) / float(grid_resolution);
+        }
+        if (isNorth(corner)) {
+            positionZ = (float)( y + unit ) / float(grid_resolution);
+        }
+        else {
+            positionZ = (float)( y - unit) / float(grid_resolution);
+        }
+        
+
+        sampleElevation(startPixelU, startPixelV, size, positionX, positionZ, elevation);
+
+        VertexType vert;
+        vert.position = XMFLOAT3(positionX, elevation, positionZ);
+        vert.texture = XMFLOAT2(isEast(corner) ? u + increment : u, isNorth(corner) ? v + increment : v);//vert.texture = XMFLOAT2(u + increment, v + increment);
+        vert.normal = XMFLOAT3(0.0, 1.0, 0.0);
+        vertices.push_back(vert);
+        indices.push_back(index);
+        index++;
+    }
 
 public:
-    
 
 protected:
-    HeightmapType* _heightmap;
+    static int grid_resolution;// one less than the vertex resolution
+    static HeightmapType* _heightmap;
     XMFLOAT2* _positionOfDetail;
     //*static*/ float total_size;
 };

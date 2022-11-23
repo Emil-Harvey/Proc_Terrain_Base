@@ -20,7 +20,7 @@ void QuadTreeMesh::render(ID3D11DeviceContext* dc, TerrainShader* shader, const 
     this->size = size;
 
 #ifndef CPU_TERRAIN_ENABLED
-    const int resolution = 7;// has to be odd. also some numbers don't work, not sure why
+    const int resolution = 9;// has to be odd. also some numbers don't work, not sure why
     geometry = new TessellationTerrain(d, dc, heightmap, pos, size, total_size, posOfDetail, resolution);
 #else
     const int resolution = 6;

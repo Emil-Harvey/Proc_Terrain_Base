@@ -11,7 +11,7 @@
 
 #define HEIGHTMAP_DIM 1600
 typedef std::array<XMFLOAT4, HEIGHTMAP_DIM* HEIGHTMAP_DIM> HeightmapType;
-
+typedef Corner QuadtreeIndex;
 
 ///=====================<CLASS--QUADTREENODE>=====================================>
 class QuadtreeNode {
@@ -29,15 +29,15 @@ public:
     QuadtreeNode(ID3D11Device* d, ID3D11DeviceContext* dc, XMFLOAT2 pos, float size, XMFLOAT2* posOfDetail = nullptr);
     ~QuadtreeNode();
 
-    XMFLOAT2 Position() { return position; }
+    const XMFLOAT2 Position() { return position; }
 
-    //QuadtreeNode* Nodes() { return subNodes; } Make Subnodes a vector? std::array?
+    const std::array<unique_ptr<QuadtreeNode>, 4>* Nodes() { return &subNodes; } 
 
-    float Size() { return size; }
+    const float Size() { return size; }
 
     void subdivide(ID3D11Device* d, ID3D11DeviceContext* dc, XMFLOAT2 targetPosition, int depth = 0, HeightmapType* height_map = nullptr);
 
-    bool isLeaf() { /*return subNodes == NULL;*/ return subNodes.empty() || subNodes[0] == nullptr; }//
+    const bool isLeaf() { /*return subNodes == NULL;*/ return subNodes.empty() || subNodes[0] == nullptr; }//
 
     void render(ID3D11DeviceContext* dc, TerrainShader* shader, const XMMATRIX& world, const XMMATRIX& view, const XMMATRIX& projection, Frustum* viewFrustum, ID3D11ShaderResourceView** textures, Light* light, FPCamera* camera, ShaderVariables* SVars, ID3D11ShaderResourceView* heightmap);
 };
@@ -47,14 +47,14 @@ class QuadTreeMesh //: public TessellationMesh
 {
     /// a mesh made of constituent tessellationplanes, that dynamically use a quadtree system
     ///Recursion
-    
+    /*
     enum QuadtreeIndex {
         // in binary order- if x>=0: 0, else: 1. same for y but in second digit. ergo +X,+Y = 00; -X,-Y = 11; etc.
         northeast = 0, // +X, +Y    | false, false; 00
         southeast = 1, // +X, -Y    | false, true;  01
         northwest = 2, // -X, +Y    | true, false;  10
         southwest = 3  // -X, -Y    | true, true;   11
-    };
+    };*/
 
 
 public:

@@ -1,11 +1,12 @@
 ﻿#include "TessellationTerrain.h"
-
+int TessellationTerrain::grid_resolution = 0;
+HeightmapType* TessellationTerrain::_heightmap = nullptr;
 
 TessellationTerrain::TessellationTerrain(ID3D11Device* device, ID3D11DeviceContext* deviceContext, HeightmapType* Heightmap, XMFLOAT2 pos, float size, float total_size, XMFLOAT2* PositionOfDetail, int resolution)
 	: PlaneMesh(device, deviceContext, resolution)
 {
 	assert(resolution > 4);
-
+	grid_resolution = (resolution - 1);
 	_heightmap = Heightmap;
 	_positionOfDetail = PositionOfDetail;
 
@@ -21,7 +22,7 @@ TessellationTerrain::TessellationTerrain(ID3D11Device* device, ID3D11DeviceConte
 	float right_edge = pos.x + (size * +0.5);
 	float front_edge = pos.y + (size * -0.5);
 	float back_edge  = pos.y + (size * +0.5);
-	EdgeFlags edges;
+	/*EdgeFlags edges;
 	if (_positionOfDetail->x < left_edge)
 		edges.left = false;
 	else if (_positionOfDetail->x > right_edge)
@@ -33,15 +34,15 @@ TessellationTerrain::TessellationTerrain(ID3D11Device* device, ID3D11DeviceConte
 	else if (_positionOfDetail->y > back_edge)
 		edges.back = false;
 	else
-		edges.front = false, edges.back = false;
+		edges.front = false, edges.back = false;*/
 
-	initBuffers(device, XMFLOAT2(pos.x / total_size, pos.y / total_size), size / total_size, edges );
+	initBuffers(device, XMFLOAT2(pos.x / total_size, pos.y / total_size), size / total_size);
 }
 
 
 
 // Identical to TessellationPlane, however the vertices are displaced by a heightmap, and potential seams made by a QuadTree are sorted
-void TessellationTerrain::initBuffers(ID3D11Device* device, XMFLOAT2 _pos, float _size, EdgeFlags flags)
+void TessellationTerrain::initBuffers(ID3D11Device* device, XMFLOAT2 _pos, float _size)
 {
 	std::vector<VertexType> vertices;//VertexType* vertices;
 	std::vector<unsigned long> indices;//unsigned long* indices
@@ -67,11 +68,12 @@ void TessellationTerrain::initBuffers(ID3D11Device* device, XMFLOAT2 _pos, float
 	
 
 	index = 0;//
+	VertexType vert;
 	// UV coords.
 	u = 0;//
 	v = 0;//
 	increment = 1.0f / resolution;//
-	const float resMinusOne = resolution - 1.0f; 
+	//const float resMinusOne = grid_resolution;
 	const float unit = 0.5;
 	for (int j = 1; j < (resolution - 2); j++)
 	{
@@ -80,7 +82,7 @@ void TessellationTerrain::initBuffers(ID3D11Device* device, XMFLOAT2 _pos, float
 		for (int i = 1; i < (resolution - 2); i++)
 		{
 			u = increment * i;
-			index = (i * 6) + (j * resMinusOne * 6);
+			//index = (i * 6) + (j * resMinusOne);
 
 			// position of this quad. the vertices should be 0.5 units in each direction from this point
 			// x and y shift i & j from 0 - resolution to ~(-resolution/2) - (+resolution/2)
@@ -90,99 +92,45 @@ void TessellationTerrain::initBuffers(ID3D11Device* device, XMFLOAT2 _pos, float
 
 			///tri #1: ◸
 			// lower left																										   
-			positionX = (float)(x - unit) / resMinusOne;
-			positionZ = (float)(y - unit) / resMinusOne;
-
-			sampleElevation(startPixelU, startPixelV, _size, positionX, positionZ, elevation, flags);
-
-			vertices[index].position = XMFLOAT3(positionX, elevation, positionZ);
-			vertices[index].texture = XMFLOAT2(u, v);
-			vertices[index].normal = XMFLOAT3(0.0, 1.0, 0.0);
-			indices[index] = index;
-			index++;								
+			AddVertex(startPixelU, startPixelV, u, v, x, y, _size, index, vertices, indices, southwest);
 
 			// Upper right.
-			positionX = (float)(x + unit) / resMinusOne;
-			positionZ = (float)(y + unit) / resMinusOne;
-
-			sampleElevation(startPixelU, startPixelV, _size, positionX, positionZ, elevation, flags);
-			
-			vertices[index].position = XMFLOAT3(positionX, elevation, positionZ);											   
-			vertices[index].texture = XMFLOAT2(u + increment, v + increment);			
-			vertices[index].normal = XMFLOAT3(0.0, 1.0, 0.0);																   
-			indices[index] = index;												
-			index++;							
+			AddVertex(startPixelU, startPixelV, u, v, x, y, _size, index, vertices, indices, northeast);
 
 			// Upper left.
-			positionX = (float)(x - unit) / resMinusOne;
-			positionZ = (float)(y + unit) / resMinusOne;
-			
-			sampleElevation(startPixelU, startPixelV, _size, positionX, positionZ, elevation, flags);
-
-			vertices[index].position = XMFLOAT3(positionX, elevation, positionZ);
-			vertices[index].texture = XMFLOAT2(u, v + increment);
-			vertices[index].normal = XMFLOAT3(0.0, 1.0, 0.0);
-			indices[index] = index;
-			index++;																										   			
+			AddVertex(startPixelU, startPixelV, u, v, x, y, _size, index, vertices, indices, northwest);
 
 			/// tri #2:	◿	
 			// lower left																										   
-			positionX = (float)(x - unit) / resMinusOne;
-			positionZ = (float)(y - unit) / resMinusOne;
-
-			sampleElevation(startPixelU, startPixelV, _size, positionX, positionZ, elevation, flags);
-
-			vertices[index].position = XMFLOAT3(positionX, elevation, positionZ);
-			vertices[index].texture = XMFLOAT2(u, v);
-			vertices[index].normal = XMFLOAT3(0.0, 1.0, 0.0);
-			indices[index] = index;
-			index++;			
+			AddVertex(startPixelU, startPixelV, u, v, x, y, _size, index, vertices, indices, southwest);
 																																   
 			// Bottom right
-			positionX = (float)(x + unit) / resMinusOne;
-			positionZ = (float)(y - unit) / resMinusOne;
-
-			// sample the heightmap at the right location
-			sampleElevation(startPixelU, startPixelV, _size, positionX, positionZ, elevation, flags);
-
-			vertices[index].position = XMFLOAT3(positionX, elevation, positionZ);
-			vertices[index].texture = XMFLOAT2(u + increment, v);
-			vertices[index].normal = XMFLOAT3(0.0, 1.0, 0.0);
-			indices[index] = index;
-			index++;			
+			AddVertex(startPixelU, startPixelV, u, v, x, y, _size, index, vertices, indices, southeast);
 																																   
 			// Upper right.																										   
-			positionX = (float)(x + unit) / resMinusOne;																		   
-			positionZ = (float)(y + unit) / resMinusOne;																		   
-																																   
-			sampleElevation(startPixelU, startPixelV, _size, positionX, positionZ, elevation, flags);
-
-			vertices[index].position = XMFLOAT3(positionX, elevation, positionZ);
-			vertices[index].texture = XMFLOAT2(u + increment, v + increment);
-			vertices[index].normal = XMFLOAT3(0.0, 1.0, 0.0);
-			indices[index] = index;
-			index++;
+			AddVertex(startPixelU, startPixelV, u, v, x, y, _size, index, vertices, indices, northeast);
 			
 
 		}
 	}
+
 	/// Create the edges, account for possible detail differences
 
 	// north edge
 	u = 0;
 	v = 0;
-	int detail_difference = 0; Direction dir;
+	int detail_difference = 1; Direction dir = WEST;
 	// default case: no LOD difference at the edge
 	/*
 	if (detail_difference == 0) {
 		int index = 0;
-		int y = GRID_RESOLUTION - 1;
+		int y = grid_resolution - 1;
 		int x = 0;
-		for (int i = 0; i < GRID_RESOLUTION - 1; i += 2) {
+		for (int i = 0; i < grid_resolution - 1; i += 2) {
 			{
 				int x = i;
 				RotateIndices(x, y, dir);
-				index = (x)+(y * GRID_RESOLUTION);
+				index = (x)+(y * grid_resolution);
 
 				float PositionX = (float)(x - unit * (resolution - 2) - unit) / resMinusOne;
 				float PositionZ = (float)(y - unit * (resolution - 2) - unit) / resMinusOne;
@@ -198,7 +146,7 @@ void TessellationTerrain::initBuffers(ID3D11Device* device, XMFLOAT2 _pos, float
 				{
 					int x = i + d;
 					RotateIndices(x, y, dir);
-					index = (x)+(y * GRID_RESOLUTION);
+					index = (x)+(y * grid_resolution);
 
 					float PositionX = (float)(x - unit * (resolution - 2) - unit) / resMinusOne;
 					float PositionZ = (float)(y - unit * (resolution - 2) - unit) / resMinusOne;
@@ -220,180 +168,127 @@ void TessellationTerrain::initBuffers(ID3D11Device* device, XMFLOAT2 _pos, float
 	}*/
 	if(detail_difference ==0)
 	{
+		///VertexType vert;
+		Corner rotated_NE = RotateCorner(northeast, dir);
+		Corner rotated_SE = RotateCorner(southeast, dir);
+		Corner rotated_NW = RotateCorner(northwest, dir);
+		Corner rotated_SW = RotateCorner(southwest, dir);
 		// top edge will look like this: ◹◸◿◺◹◸ ... ◿◺◹◸
-		// the amount of ◹◸s is GRID_RESOLUTION / 2
+		// the amount of ◹◸s is grid_resolution / 2
 		// there is one less ◿◺ than ◹◸
 		// so:
 		// when i = 0; just build ◹◸
 		// from i = 1 onward, build ◿◺ + ◹◸
-		int j = 0;
-		float y = j - unit * (resolution - 2);
-		for (int i=0; i < GRID_RESOLUTION; i+=2) {
-			float x;
+		int j = grid_resolution-1;
+		
+		for (int i=0; i < grid_resolution; i+=2) {
+			float x, y;
+			float* a = &((int(dir) & 1 == 1) ? x : x); // a = x when dir == north or south
+			float* b = &((int(dir) & 1 == 1) ? y : y); // b = y when ''			''
+			
+			int rotated_i = i;
+			int rotated_j = j;
+			RotateIndices(rotated_i, rotated_j, dir);
+			*b = rotated_j - unit * (resolution - 2);
+
 			if (i > 0) {// build an additional ◿◺ first
 
-				//int rotated_i = i;
-				//int rotated_j = j;
-				//RotateIndices(rotated_i, rotated_j, dir);
-
-				x = (i-1) - unit * (resolution - 2);
-
-				///tri #1: ◿
-				// lower left
+				*a = (rotated_i -1) - unit * (resolution - 2);
 				
-				positionX = (float)(x - unit) / resMinusOne;
-				positionZ = (float)(y - unit) / resMinusOne;
-
-				sampleElevation(startPixelU, startPixelV, _size, positionX, positionZ, elevation, flags);
-
-				vertices[index].position = XMFLOAT3(positionX, elevation, positionZ);
-				vertices[index].texture = XMFLOAT2(u, v);
-				vertices[index].normal = XMFLOAT3(0.0, 1.0, 0.0);
-				indices[index] = index;
-				index++;
-
-				// lower right.
-				positionX = (float)(x + unit) / resMinusOne;
-				positionZ = (float)(y - unit) / resMinusOne;
-
-				sampleElevation(startPixelU, startPixelV, _size, positionX, positionZ, elevation, flags);
-
-				vertices[index].position = XMFLOAT3(positionX, elevation, positionZ);
-				vertices[index].texture = XMFLOAT2(u + increment, v);
-				vertices[index].normal = XMFLOAT3(0.0, 1.0, 0.0);
-				indices[index] = index;
-				index++;
-
-				// Upper right.
-				positionX = (float)(x + unit) / resMinusOne;
-				positionZ = (float)(y + unit) / resMinusOne;
-
-				sampleElevation(startPixelU, startPixelV, _size, positionX, positionZ, elevation, flags);
-
-				vertices[index].position = XMFLOAT3(positionX, elevation, positionZ);
-				vertices[index].texture = XMFLOAT2(u + increment, v + increment);
-				vertices[index].normal = XMFLOAT3(0.0, 1.0, 0.0);
-				indices[index] = index;
-				index++;
+				///tri #1: ◿
+				// lower left																										   
+				AddVertex(startPixelU, startPixelV, u, v, x, y, _size, index, vertices, indices, rotated_SW);
+				// Bottom right
+				AddVertex(startPixelU, startPixelV, u, v, x, y, _size, index, vertices, indices, rotated_SE);
+				// Upper right.																										   
+				AddVertex(startPixelU, startPixelV, u, v, x, y, _size, index, vertices, indices, rotated_NE);
 
 				///tri #2: ◺
-				x = i - unit * (resolution - 2);
+				*a = (rotated_i) - unit * (resolution - 2);
 				// Upper left.
-				positionX = (float)(x + unit) / resMinusOne;
-				positionZ = (float)(y + unit) / resMinusOne;
-
-				sampleElevation(startPixelU, startPixelV, _size, positionX, positionZ, elevation, flags);
-
-				vertices[index].position = XMFLOAT3(positionX, elevation, positionZ);
-				vertices[index].texture = XMFLOAT2(u, v + increment);
-				vertices[index].normal = XMFLOAT3(0.0, 1.0, 0.0);
-				indices[index] = index;
-				index++;
-
+				AddVertex(startPixelU, startPixelV, u, v, x, y, _size, index, vertices, indices, rotated_NW);
 				// lower left
-
-				positionX = (float)(x + unit) / resMinusOne;
-				positionZ = (float)(y - unit) / resMinusOne;
-
-				sampleElevation(startPixelU, startPixelV, _size, positionX, positionZ, elevation, flags);
-
-				vertices[index].position = XMFLOAT3(positionX, elevation, positionZ);
-				vertices[index].texture = XMFLOAT2(u, v);
-				vertices[index].normal = XMFLOAT3(0.0, 1.0, 0.0);
-				indices[index] = index;
-				index++;
-
+				AddVertex(startPixelU, startPixelV, u, v, x, y, _size, index, vertices, indices, rotated_SW);
 				// lower right.
-				positionX = (float)(x + unit*3.f) / resMinusOne;
-				positionZ = (float)(y - unit) / resMinusOne;
-
-				sampleElevation(startPixelU, startPixelV, _size, positionX, positionZ, elevation, flags);
-
-				vertices[index].position = XMFLOAT3(positionX, elevation, positionZ);
-				vertices[index].texture = XMFLOAT2(u + increment, v);
-				vertices[index].normal = XMFLOAT3(0.0, 1.0, 0.0);
-				indices[index] = index;
-				index++;
+				AddVertex(startPixelU, startPixelV, u, v, x, y, _size, index, vertices, indices, rotated_SE);
 
 				u++;
 			}
 			///tri #1: ◹
-			x = i - unit * (resolution - 2);
+			*a = (rotated_i) - unit * (resolution - 2);
 			// Upper left.
-			positionX = (float)(x - unit) / resMinusOne;
-			positionZ = (float)(y + unit) / resMinusOne;
-
-			sampleElevation(startPixelU, startPixelV, _size, positionX, positionZ, elevation, flags);
-
-			vertices[index].position = XMFLOAT3(positionX, elevation, positionZ);
-			vertices[index].texture = XMFLOAT2(u, v + increment);
-			vertices[index].normal = XMFLOAT3(0.0, 1.0, 0.0);
-			indices[index] = index;
-			index++;
-
+			AddVertex(startPixelU, startPixelV, u, v, x, y, _size, index, vertices, indices, rotated_NW);
 			// lower right.
-			positionX = (float)(x + unit) / resMinusOne;
-			positionZ = (float)(y - unit) / resMinusOne;
-
-			sampleElevation(startPixelU, startPixelV, _size, positionX, positionZ, elevation, flags);
-
-			vertices[index].position = XMFLOAT3(positionX, elevation, positionZ);
-			vertices[index].texture = XMFLOAT2(u + increment, v);
-			vertices[index].normal = XMFLOAT3(0.0, 1.0, 0.0);
-			indices[index] = index;
-			index++;
-
+			AddVertex(startPixelU, startPixelV, u, v, x, y, _size, index, vertices, indices, rotated_SE);
 			// Upper right.
-			positionX = (float)(x + unit) / resMinusOne;
-			positionZ = (float)(y + unit) / resMinusOne;
-
-			sampleElevation(startPixelU, startPixelV, _size, positionX, positionZ, elevation, flags);
-
-			vertices[index].position = XMFLOAT3(positionX, elevation, positionZ);
-			vertices[index].texture = XMFLOAT2(u + increment, v + increment);
-			vertices[index].normal = XMFLOAT3(0.0, 1.0, 0.0);
-			indices[index] = index;
-			index++;
+			AddVertex(startPixelU, startPixelV, u, v, x, y, _size, index, vertices, indices, rotated_NE);
 
 			///tri #2: ◸
-			x = (i+1) - unit * (resolution - 2);
-
+			*a = (rotated_i + 1) - unit * (resolution - 2);
 			
 			// lower left																										   
-			positionX = (float)(x - unit) / resMinusOne;
-			positionZ = (float)(y - unit) / resMinusOne;
-
-			sampleElevation(startPixelU, startPixelV, _size, positionX, positionZ, elevation, flags);
-
-			vertices[index].position = XMFLOAT3(positionX, elevation, positionZ);
-			vertices[index].texture = XMFLOAT2(u, v);
-			vertices[index].normal = XMFLOAT3(0.0, 1.0, 0.0);
-			indices[index] = index;
-			index++;
-
+			AddVertex(startPixelU, startPixelV, u, v, x, y, _size, index, vertices, indices, rotated_SW);
 			// Upper right.
-			positionX = (float)(x + unit) / resMinusOne;
-			positionZ = (float)(y + unit) / resMinusOne;
-
-			sampleElevation(startPixelU, startPixelV, _size, positionX, positionZ, elevation, flags);
-
-			vertices[index].position = XMFLOAT3(positionX, elevation, positionZ);
-			vertices[index].texture = XMFLOAT2(u + increment, v + increment);
-			vertices[index].normal = XMFLOAT3(0.0, 1.0, 0.0);
-			indices[index] = index;
-			index++;
-
+			AddVertex(startPixelU, startPixelV, u, v, x, y, _size, index, vertices, indices, rotated_NE);
 			// Upper left.
-			positionX = (float)(x - unit) / resMinusOne;
-			positionZ = (float)(y + unit) / resMinusOne;
+			AddVertex(startPixelU, startPixelV, u, v, x, y, _size, index, vertices, indices, rotated_NW);
+		}
+	}
+	else {// Detai_difference >=1, when the LOD changes at this edge.
+		///VertexType vert;
+		Corner rotated_NE = RotateCorner(northeast, dir);
+		Corner rotated_SE = RotateCorner(southeast, dir);
+		Corner rotated_NW = RotateCorner(northwest, dir);
+		Corner rotated_SW = RotateCorner(southwest, dir);
+		// top edge will look like this: ◹◸◿◺◹◸ ... ◿◺◹◸
+		// the amount of ◹◸s is grid_resolution / 2
+		// there is one less ◿◺ than ◹◸
+		// so:
+		// when i = 0; just build ◹◸
+		// from i = 1 onward, build ◿◺ + ◹◸
+		int j = grid_resolution - 1;
 
-			sampleElevation(startPixelU, startPixelV, _size, positionX, positionZ, elevation, flags);
+		for (int i = 0; i < grid_resolution; i += 2) {
+			float x, y;
 
-			vertices[index].position = XMFLOAT3(positionX, elevation, positionZ);
-			vertices[index].texture = XMFLOAT2(u, v + increment);
-			vertices[index].normal = XMFLOAT3(0.0, 1.0, 0.0);
-			indices[index] = index;
-			index++;
+			int rotated_i = i;
+			int rotated_j = j;
+			RotateIndices(rotated_i, rotated_j, dir);
+			y/*((int(dir) & 1 == 1)? x : y)*/ = rotated_j - unit * (resolution - 2);
+
+			if (i > 0) {// build an additional ◿◺ first
+
+				x/*((int(dir) & 1 == 1) ? y : x)*/ = (rotated_i - 1) - unit * (resolution - 2);
+
+				///tri #1: ◿
+				// lower left																										   
+				AddVertex(startPixelU, startPixelV, u, v, x, y, _size, index, vertices, indices, rotated_SW);
+				// Bottom right
+				AddVertex(startPixelU, startPixelV, u, v, x, y, _size, index, vertices, indices, rotated_SE);
+				// Upper right.																										   
+				AddVertex(startPixelU, startPixelV, u, v, x, y, _size, index, vertices, indices, rotated_NE);
+
+				///tri #2: ◺
+				x = (rotated_i)-unit * (resolution - 2);
+				// Upper left.
+				AddVertex(startPixelU, startPixelV, u, v, x, y, _size, index, vertices, indices, rotated_NW);
+				// lower left
+				AddVertex(startPixelU, startPixelV, u, v, x, y, _size, index, vertices, indices, rotated_SW);
+				// lower right.
+				AddVertex(startPixelU, startPixelV, u, v, x, y, _size, index, vertices, indices, rotated_SE);
+
+				u++;
+			}
+			///tri #1: \/
+			x = (rotated_i)-unit * (resolution - 2);
+			// Upper left.
+			AddVertex(startPixelU, startPixelV, u, v, x, y, _size, index, vertices, indices, rotated_NW);
+			// lower right.
+			AddVertex(startPixelU, startPixelV, u, v, x, y, _size, index, vertices, indices, rotated_SE);
+
+			x = (rotated_i + 1) - unit * (resolution - 2);
+			// Upper right.
+			AddVertex(startPixelU, startPixelV, u, v, x, y, _size, index, vertices, indices, rotated_NE);
 		}
 	}
 
@@ -443,10 +338,11 @@ void TessellationTerrain::initBuffers(ID3D11Device* device, XMFLOAT2 _pos, float
 }
 
 	// sample the heightmap at the right location
-inline bool TessellationTerrain::sampleElevation(int startPixelU, int startPixelV, float _size, float & positionX, float & positionZ,  float &elevation, EdgeFlags flags) {
+inline void TessellationTerrain::sampleElevation(int startPixelU, int startPixelV, float _size, float & positionX, float & positionZ,  float &elevation) //, EdgeFlags flags
+{
 	if (_heightmap) {
 
-		if ( ((flags.left && positionX <= -0.5) || (flags.right && positionX >= 0.5)) && int(positionZ * GRID_RESOLUTION) % 2 == 0)
+		/*if (((flags.left && positionX <= -0.5) || (flags.right && positionX >= 0.5)) && int(positionZ * grid_resolution) % 2 == 0)
 		{/// if edge vertex, only sample every 2nd one, to avoid SEAMS
 			//odd numbered, so dont sample here but rather use the midpoint of the neighbours, as if bisecting a straight line 
 			return false;
@@ -455,7 +351,7 @@ inline bool TessellationTerrain::sampleElevation(int startPixelU, int startPixel
 			//elevation =
 			//	((*_heightmap)[neighbour_A_samplePoint].w + (*_heightmap)[max(neighbour_B_samplePoint,0)].w) / 2.0f;
 		}
-		else if (((flags.front && positionZ <= -0.5) || (flags.back && positionZ >= 0.5)) && int(positionZ * GRID_RESOLUTION) % 2 == 0)
+		else if (((flags.front && positionZ <= -0.5) || (flags.back && positionZ >= 0.5)) && int(positionZ * grid_resolution) % 2 == 0)
 		{/// same as above but for other axis
 			return false;
 			//int neighbour_A_samplePoint = SamplePoint(startPixelU, startPixelV, _size, positionX + (1.f / (float)resMinus1), positionZ);
@@ -466,8 +362,8 @@ inline bool TessellationTerrain::sampleElevation(int startPixelU, int startPixel
 		else {// middle vertex- sample normally*/
 			int samplePoint = SamplePoint(startPixelU, startPixelV, _size, positionX, positionZ);
 			elevation = (*_heightmap)[samplePoint].w;// alpha channel of heightmap
-			return true;
-		}
+			//return true;
+		//}
 	}
 }
 // create the border vertices of the mesh
@@ -476,12 +372,12 @@ void TessellationTerrain::BuildEdge(std::vector<VertexType>& vertices, Direction
 	// default case: no LOD difference at the edge
 	if (detail_difference == 0) {
 		int index = 0;
-		int y = GRID_RESOLUTION - 1;
+		int y = grid_resolution - 1;
 		int x = 0;
-		for (int i = 0; i < GRID_RESOLUTION - 1; i+=2) {
+		for (int i = 0; i < grid_resolution - 1; i+=2) {
 			int x = i;
 			RotateIndices(x, y, dir);
-			index = (x) + (y * GRID_RESOLUTION);
+			index = (x) + (y * grid_resolution);
 
 			Position
 			vertices[index] = 

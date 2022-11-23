@@ -48,7 +48,7 @@ void App1::init(HINSTANCE hinstance, HWND hwnd, int screenWidth, int screenHeigh
 	terrainShader = new TerrainShader(renderer->getDevice(), hwnd);
 	horBlur = new ComputeBlurHor(renderer->getDevice(), hwnd, screenWidth, screenHeight);
 	verBlur = new ComputeBlurVert(renderer->getDevice(), hwnd, screenWidth, screenHeight);
-	csLand = new ComputeLandscape(renderer->getDevice(), hwnd, 1600, 1600);
+	csLand = new ComputeLandscape(renderer->getDevice(), hwnd, MAP_DIM, MAP_DIM);
 	csErosion = new ComputeErosion(renderer->getDevice(), hwnd, 1500, 1500);
 
 	
@@ -294,7 +294,7 @@ bool App1::frame()
 	XMFLOAT2 camera_xz = { camera->getPosition().x, camera->getPosition().z };
 	static XMFLOAT2 old_camera_xz;
 	if(camera_xz.x != old_camera_xz.x && camera_xz.y != old_camera_xz.y)
-		qt_Terrain->Reconstruct(renderer->getDevice(), renderer->getDeviceContext(), 4, camera_xz);
+		qt_Terrain->Reconstruct(renderer->getDevice(), renderer->getDeviceContext(), 4, camera_xz);// careful of memory leak
 		old_camera_xz = camera_xz;
 	}
 
@@ -331,10 +331,9 @@ bool App1::render()
 bool App1::renderMinimap(bool erode_as_well)
 {
 	csLand->setShaderParameters(renderer->getDeviceContext(), curHeightmapSRV, &vars);
-	csLand->compute(renderer->getDeviceContext(), MAP_DIM / 10, MAP_DIM / 10, 1);
+	csLand->compute(renderer->getDeviceContext(), MAP_DIM / 8, MAP_DIM / 8, 1);
 	csLand->unbind(renderer->getDeviceContext());
 	// make a copy of the SRV to be used in the future, as the pointer may 'break'(?)
-	//auto csLandscapeSRV = *
 	curHeightmapSRV = csLand->getSRV();//&csLandscapeSRV;//
 
 	if (erode_as_well)
@@ -353,10 +352,6 @@ bool App1::erodeTerrain()
 		csErosion->compute(renderer->getDeviceContext(), 80, 80, 1);
 		csErosion->unbind(renderer->getDeviceContext());
 		// make a copy of the SRV to be used in the future, as the pointer may 'break'(?) //
-		///CHECK(SUCCEEDED(renderer->getDevice()->CreateShaderResourceView(mPtr, &shaderResourceViewDesc, &mSRV)));
-
-		//ID3D11ShaderResourceView csErosionSRV = ID3D11ShaderResourceView()
-		//	= *csErosion->getSRV();
 		curHeightmapSRV = csErosion->getSRV();//&csErosionSRV;//
 
 	}
@@ -654,7 +649,33 @@ void App1::gui()
 	ImGui::SliderFloat("##latitude", &vars.GlobalPosition.y, -2.0f*vars.PlanetDiameter, 2.0f*vars.PlanetDiameter, "Latitude: %.2f", 3.0f);
 	ImGui::SliderFloat("##Planetdiameter", &vars.PlanetDiameter, 50, 127420, "Planet Diameter: %.2f", 5.0f);
 
-	
+	ImGui::Begin("Quadtree Heightmap ");
+	QuadtreeNode* node_to_render = nullptr;
+	if (ImGui::Button("LOD0-Root")) {
+		node_to_render = qt_Terrain->getRoot();
+		QuadtreeHeightmap(node_to_render);
+	}if (ImGui::Button("LOD1-Root-NE")) {
+		node_to_render = qt_Terrain->getRoot()->Nodes()->at(northeast).get();
+		QuadtreeHeightmap(node_to_render);
+	}if (ImGui::Button("LOD1-Root-SE")) {
+		node_to_render = qt_Terrain->getRoot()->Nodes()->at(southeast).get();
+		QuadtreeHeightmap(node_to_render);
+	}if (ImGui::Button("LOD1-Root-SW")) {
+		node_to_render = qt_Terrain->getRoot()->Nodes()->at(southwest).get();
+		QuadtreeHeightmap(node_to_render);
+	}if (ImGui::Button("LOD1-Root-NW")) {
+		node_to_render = qt_Terrain->getRoot()->Nodes()->at(northwest).get();
+		QuadtreeHeightmap(node_to_render);
+	}
+	if (ImGui::Button("LOD1-Root-NE-SW")) {
+		node_to_render = qt_Terrain->getRoot()->Nodes()->at(northeast).get()->Nodes()->at(southwest).get();
+		QuadtreeHeightmap(node_to_render);
+	}
+	if (ImGui::Button("LOD1-Root-NE-SE")) {
+		node_to_render = qt_Terrain->getRoot()->Nodes()->at(northeast).get()->Nodes()->at(southeast).get();
+		QuadtreeHeightmap(node_to_render);
+	}
+	ImGui::End();
 
 	ImGui::Begin("Tessellation options");
 		ImGui::SliderFloat("near threshold", &vars.LODnear, 0.0, vars.LODfar);
@@ -674,7 +695,7 @@ void App1::gui()
 		if (ImGui::ArrowButton("zoom-", ImGuiDir_Down) && mapZoom > 1) {
 			mapZoom--;
 		}
-		ImGui::Image(curHeightmapSRV/*verBlur->getSRV()*/, ImVec2(200, 200));///
+		ImGui::Image(curHeightmapSRV/*verBlur->getSRV()*/, ImVec2(200, 200), ImVec2(0,1), ImVec2(1,0));///
 		//ImGui::Image(my_tex_id, ImVec2(my_tex_w, my_tex_h), ImVec2(0, 0), ImVec2(1, 1), ImColor(255, 255, 255, 255), ImColor(255, 255, 255, 128));
 		//ImGui::ShowDemoWindow();
 		//if (ImGui::IsItemHovered())
@@ -742,28 +763,28 @@ void App1::gui()
 void App1::initTextures() {
 //			
 
-	const wchar_t* material[8] = { L"grass",L"stone",L"snow",L"rock",L"water",L"sand",L"mulch",L"gravel" };
-	const wchar_t* type[4] = { L"_c",L"_h",L"_n",L"_s" };
+	const wchar_t* material[9] = { L"grass",L"stone",L"snow",L"rock",L"water",L"sand",L"mulch",L"gravel",L"savan" };
+	const wchar_t* type[2] = { L"_as",L"_nh" };//{ L"_c",L"_h",L"_n",L"_s" };
 
 	const wchar_t* path = L"res/nice textures/";
 	const wchar_t* sep = L"_/";
 	const wchar_t* extn = L".png";
 
-	//for (int t = 0; t < 4; t++) {		unfortunately i can't get this to work
-	//	for (int m = 0; m < 8; m++) {
-	//		// use wstring for simple concatenation -- stackoverflow.com/questions/1855956/
-	//		std::wstring name = std::wstring(material[m]) + std::wstring(type[t]);// ie "grass_c"
-	//		std::wstring fpath = std::wstring(path) + std::wstring(material[m]) + std::wstring(sep) + std::wstring(name) + std::wstring(extn);
-	//		// ie "res/nice textures/grass_/grass_c.png"
-	//		textureMgr->loadTexture(name.c_str(), fpath.c_str());
-	//		
-	//		// put the texture in the array ready for the shader
-	//		//textures[m + (t * 8)] = textureMgr->getTexture(name.c_str());		
-	//	}
-	//}
+	for (int t = 0; t < 2; t++) {//		unfortunately i can't get this to work
+		for (int m = 0; m < 9; m++) {
+			// use wstring for simple concatenation -- stackoverflow.com/questions/1855956/
+			std::wstring name = std::wstring(material[m]) + std::wstring(type[t]);// ie "grass_c"
+			std::wstring fpath = std::wstring(path) + std::wstring(material[m]) + std::wstring(sep) + std::wstring(name) + std::wstring(extn);
+			// ie "res/nice textures/grass_/grass_c.png"
+			textureMgr->loadTexture(name.c_str(), fpath.c_str());
+			
+			// put the texture in the array ready for the shader
+			textures[m + (t * 8)] = textureMgr->getTexture(name.c_str());		
+		}
+	}
 	
 	//auto xzzj = textures;
-//*
+/*
 	textureMgr->loadTexture(L"rock_c", L"res/lofi textures/rock_/rock_c.png");
 	//textureMgr->loadTexture(L"rock_h", L"res/nice textures/rock_/rock_h.png");
 	textureMgr->loadTexture(L"rock_n", L"res/nice textures/rock_/rock_nh.png");
@@ -820,7 +841,7 @@ void App1::initTextures() {
 			int x = m;
 		}
 	}
-//*/
+//* /
 	// albedo/specular maps (c for colour)
 	textures[0] = textureMgr->getTexture(L"grass_c");
 	textures[1] = textureMgr->getTexture(L"stone_c");
@@ -842,7 +863,7 @@ void App1::initTextures() {
 	textures[15] = textureMgr->getTexture(L"mulch_n");
 	textures[16] = textureMgr->getTexture(L"gravel_n");
 	textures[17] = textureMgr->getTexture(L"savan_n");
-	/*//	normal maps
+	/* //	normal maps
 	textures[16]  = textureMgr->getTexture(L"grass_h");
 	textures[17]  = textureMgr->getTexture(L"stone_h");
 	textures[18] = textureMgr->getTexture(L"snow_h");
@@ -862,10 +883,10 @@ void App1::initTextures() {
 	textures[30] = textureMgr->getTexture(L"mulch_s");
 	textures[31] = textureMgr->getTexture(L"gravel_s");
 	*/
-	
 	//textures[33] = textureMgr->getTexture(L"savan_h");
-	
 	//textures[35] = textureMgr->getTexture(L"savan_s");
+	
+	
 
 	// flora	(use "oak2.png" etc for low res textures)								
 	textureMgr->loadTexture(L"grass",			  L"res/flora/grass.png");
@@ -942,4 +963,22 @@ inline void App1::TransferHeightmapToCPU()
 	//delete textureResourceGPU;
 	//delete textureInterface;*/
 	//return h;
+}
+
+// size: fraction<=1 of the quad proportional to the full mesh
+// position: world position of the quad center relative to the full mesh center
+void App1::QuadtreeHeightmap( QuadtreeNode* node)
+{
+	//
+	const float size = node->Size() / node->total_size;
+	const XMFLOAT2 position = node->Position();//{ node->Position().x / node->total_size, node->Position().y / node->total_size };
+
+	ShaderVariables alt_vars = vars;
+	alt_vars.GlobalPosition = { alt_vars.GlobalPosition.x + position.x, alt_vars.GlobalPosition.y + position.y };
+	alt_vars.Amplitude = size;//alt_vars.Scale /= size;
+
+	csLand->setShaderParameters(renderer->getDeviceContext(), curHeightmapSRV, &alt_vars);
+	csLand->compute(renderer->getDeviceContext(), MAP_DIM / 8, MAP_DIM / 8, 1); // MAP_DIM = 4096
+	csLand->unbind(renderer->getDeviceContext());
+
 }
