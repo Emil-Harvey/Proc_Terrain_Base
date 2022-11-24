@@ -67,10 +67,9 @@ void QuadTreeMesh::render(ID3D11DeviceContext* dc, TerrainShader* shader, const 
 
         float weight = QuadTreeMesh::getWeightedIndexOfPosition(targetPosition, newPos, depth - 1);
 
-
         subNodes[i] = unique_ptr<QuadtreeNode> (new QuadtreeNode(d, dc, newPos, size / 2.f, &targetPosition));
         // if this node is not at
-        if (depth > 0 && /*indexToSubdivide == i*/ weight + 5.0f < size / 2.f) {
+        if (depth > 0 && /*indexToSubdivide == i*/ weight - 5.0f < size * 0.50f) {
 
             subNodes[i]->subdivide(d, dc, targetPosition, depth - 1);
         }
@@ -81,7 +80,7 @@ void QuadTreeMesh::render(ID3D11DeviceContext* dc, TerrainShader* shader, const 
  void QuadtreeNode::render(ID3D11DeviceContext* dc, TerrainShader* shader, const XMMATRIX& world, const XMMATRIX& view, const XMMATRIX& projection, Frustum* viewFrustum, ID3D11ShaderResourceView** textures, Light* light, FPCamera* camera, ShaderVariables* SVars, ID3D11ShaderResourceView* heightmap)
 {
 
-    if (viewFrustum->CheckCuboid(XMFLOAT3(position.x, 0.0, position.y), XMFLOAT3(size, 9999.9f, size))) {
+    if (viewFrustum->CheckCuboid(XMFLOAT3(position.x, 0.0, position.y), XMFLOAT3(size, 1999.9f, size))) {
         if (!isLeaf() )
         {/// Recursively render all subnodes - only if they are leafs 
             for (int i = 0; i < 4; i++) {

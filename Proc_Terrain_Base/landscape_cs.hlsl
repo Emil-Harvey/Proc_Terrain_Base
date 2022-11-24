@@ -156,7 +156,7 @@ float get_alt_terrain_height(float2 input, float octaves) // a revised terrain a
     //...
     
     height = ((continental_noise * height) - (3.8f * continental_noise * continental_noise * continental_noise)) * scale * 3.0;
-    float curved_height = 0 +pow(height / (40.f * scale), 2.0f) * 40.f * sign(height);
+    float curved_height = 8.0*pow(height / (40.f * scale), 2.0f) * 40.f * sign(height);
     return lerp(height, curved_height, saturate(roughness_noise + subcontinent_noise + (0.2*valley_noise)));//(height + clamp(pow(height,3.0),height*2.f, 0));//*(clamp(subcontinent_noise / (scale * max(scale,1.0)), 1.0, 2.0)-0.0 );//
 }
 
@@ -192,11 +192,7 @@ void main(int3 groupThreadID : SV_GroupThreadID,
     const double c = 10.98 * pixel_vertex_scale; // scale factor ->: how many meters does 1 pixel width represent // 15,000/1500 = 10 // 7.68 = 11520 / 1500 { the world_position/size of the 3x3 terrain meshes }
     const float2 coords = {seed.x + ((offset_pixel.x * c) + globalPosition.x) / scale,
                            seed.y + ((offset_pixel.y * c) + globalPosition.y) / scale };
-    // coords: scale = 7: pos = 0,0. off_p > -2048 to 2048. *c = -22500to+22500
-    // x: (-22500to+22500)/7. +10000; [= 13214]  y: (-22500to+22500)/7. +10000;
-    // xy += 11250
-    // off_p > -2048 to 2048. *c = -11250to+11250
-    // x = 0 to 22500 etc.
+
     const float height = get_alt_terrain_height(coords, 20.0);
 
     const float macroScale = 3.0 * scale;
@@ -220,41 +216,7 @@ void main(int3 groupThreadID : SV_GroupThreadID,
     if (true || height <= 0)
         humidity = 0.5;// underwater, duh
     /*else {
-        float h_attenuation = 100.0 / 1.0; // how far humidity is carried from 'water sources' 
-        float positionOffset = 50;
-        while (h_attenuation > 1) {//       this causes stress on the GPU? <- debug settings were enabled in properties
-            
-            float a = get_terrain_height(coords + (-wind * positionOffset), 1.0);
-            a *= a*a;// cube it
-            humidity -= h_attenuation * ((a>0)? (0.2/scale)*a:(15/scale)*a);
-            h_attenuation = h_attenuation - 0.5;//pow(h_attenuation, 0.98) // 
-            positionOffset = 1.05 * positionOffset + 350;
-        }
-        humidity = max(min(humidity, 2.0),0.0);
-
-        //          from terrain-ds:
-        const half minGlobalTemp = -37.0;//`C
-        const half maxGlobalTemp = 36.6;//`C
-        //  climactic/static annual average temperature. seasonal and daily weather will alter this
-        float temperature = lerp(minGlobalTemp, maxGlobalTemp,
-                                    (0.5 + 0.5 * cos(latitude)) // cold @ poles hot @ equator
-                                    - (height / (300 * scale))//   cold @ high altitude
-                                    + dot(aspect.y, sin(latitude * 0.5)) * 0.8);// cold on polar aspect slopes // 
-        // absolute humidity - relative humidity is less meaningful///          <-- fix this algorithm?
-        //*
-        humidity +=
-            ((temperature - minGlobalTemp) * 0.02 // ~
-            + (dot(wind, -aspect) *0.0)  ); // rainshadow effect - it is more humid on slopes that face the wind
-        //+ perlin(seedc.xz / (scale * 99)) +1
-        //)/ altitude ; //
-        
-        humidity = saturate(sqrt(humidity / 1.0) + min(macro_height, 0) / 1.60);
-        
-        humidity = pow((humidity - 0.5) * 1.75, 5) + 0.50;// shift most values closer to 0.5 *
-        
-        
-
-    }
+       
     //*/
     //float3 normal = calculateNormal(coords.xz, 10.0); unnecessary(?) just sample heightmap per vertex instead
 
@@ -262,7 +224,7 @@ void main(int3 groupThreadID : SV_GroupThreadID,
 
 	
 
-    output.a = height;//40+sin(degrees(coords.y)) * 40.f;//
+    output.a = height * scale* 0.1; //40+sin(degrees(coords.y)) * 40.f;//
     output.r = macro_height /(40.f*scale);//humidity
 
     output.g = slope; // / manipulationDetails.z;

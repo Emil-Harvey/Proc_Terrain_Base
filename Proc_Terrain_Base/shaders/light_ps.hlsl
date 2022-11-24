@@ -205,8 +205,6 @@ float4 Tex(Texture2D t, triplanarUVs uv)//
                      col2 * uv.blendWeights.y +
                      col3 * uv.blendWeights.z;
 
-  float coefficient = (nSavan.Sample(s0, uv.texY * 0.002).a + 0.5) * (nSavan.Sample(s0, uv.texY * 0.05).a + 0.5) * (nSavan.Sample(s0, uv.texY * 0.2).a + 0.5);// savan is a placeholder
-  texColour.xyz *= lerp(float3(0.52, 0.51, 0.50), float3(1, 1, 1), coefficient); //       MACRO TEXTURE VARIATION - inspired by unreal engine 4
   return texColour;//(t.Sample(s0, uv)); //+t.Sample(s0, i.tex * 0.1)) / 3;
     
 }
@@ -382,7 +380,9 @@ float4 main(InputType input) : SV_TARGET
             //textureShine = currentMat.specular;
             //
         }
-
+  
+//       MACRO TEXTURE VARIATION - inspired by unreal engine 4
+        ////textureColour.xyz = (textureColour.xyz * lerp(float3(0.52, 0.51, 0.50), float3(1.0, 1.0, 1.0), coefficient));
 
     }
     //  LIGHTING / SUNLIGHT
@@ -390,6 +390,10 @@ float4 main(InputType input) : SV_TARGET
 
     lightColour = calculateLighting(-sunlight.direction, input.normal + textureNormal.xyz, sunlight.colour);//calculateLighting(-lightDirection, input.normal + textureNormal, diffuseColour); 
 
+    ///-- added biome colour effects --///
+    float variety = (tWater.Sample(s0, uv.texY * 0.002).g + 0.5) * (tWater.Sample(s0, uv.texY * 0.05).r + 0.5) * (tWater.Sample(s0, uv.texY * 0.2).b + 0.5); 
+        
+    
      //add wetness effects at beach
     if (true && altitude <= 2.2)
     {
@@ -401,7 +405,7 @@ float4 main(InputType input) : SV_TARGET
         depth = pow(min(altitude/scale, 0),3.0);// seawater colouration
         lightColour.r /= 1 - depth * 0.15;//, 4.0;//min();
         lightColour.g /= 1 - depth * 0.005;//, 2.35;//min();
-        lightColour.b /= 1 - depth * 0.000002;//, 1.2;//min();
+        lightColour.b /= 1 - depth * 0.0002;//, 1.2;//min();
     }
     else if (true || textureColour.g > (textureColour.r + textureColour.b) / 1.35) // if pixel is green
     {// grass dryness
@@ -410,7 +414,9 @@ float4 main(InputType input) : SV_TARGET
         newcol.r /= min(0.6 + input.humidity,1.2);
         newcol.g /= max(0.95 + 0.5 + (input.temperature / 64), 0.5);
         newcol.b /= 2 * max(0.95 + 0.5 + (input.temperature / 64), 0.5);
-        textureColour = lerp(textureColour, newcol, pow(greenness, 2.0));// //float4(0.7,0.1,0.8,1.0), float4(0.2, 0.8, 0.1, 1.0)
+        newcol.rgb *= lerp(float3(0.7, 0.66, 0.6), float3(1.0, 1.0, 1.0), variety);
+
+        textureColour = lerp(textureColour, saturate(newcol), pow(greenness, 2.0)); // //float4(0.7,0.1,0.8,1.0), float4(0.2, 0.8, 0.1, 1.0)
         //textureColour.rgb = greenness;
         //if (greenness > 1.0) textureColour.rg = greenness - 1;
         //if (greenness < 0.0) textureColour.rb = greenness + 1;
@@ -422,9 +428,9 @@ float4 main(InputType input) : SV_TARGET
         float3 new_mineral_col = textureColour.rgb;
         //float redness;
         //float darkness;
-        float variety = (Tex(water.albedo_specular, uv).g / 2.0) -0.2;///variety
-        new_mineral_col.b /= max(0.6 + input.humidity * (1 - input.snowness) * 2, 1.0);
-        new_mineral_col.g /= max(0.5 + input.humidity * (1 - input.snowness) * 1, 1.0);
+        variety *= 0.3;
+        new_mineral_col.b /= max(variety+ 0.3 + input.humidity * (1 - input.snowness) * 2, 1.0);
+        new_mineral_col.g /= max(variety+ 0.2 + input.humidity * (1 - input.snowness) * 1, 1.0);
         textureColour.rgb /= min(max(2.46 + input.humidity * 3.5, 1.0),1.75);
         textureColour.rgb = lerp(textureColour.rgb, new_mineral_col, pow(saturate(1-rockness),2.f));
     }

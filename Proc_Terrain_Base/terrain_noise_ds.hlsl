@@ -176,7 +176,7 @@ OutputType main(ConstantOutputType input, float3 uvwCoord : SV_DomainLocation, c
     
     if (abs(output.world_position.x) < 7500.0 && abs(output.world_position.z) < 7500.0) {
         heightmapSampled = HEIGHT.SampleLevel(s0, (output.world_position.xz / 15000.0) + 0.5, 0);// vertexPosition.xz//
-        if (flags <0)
+        //if (flags <0)
             output.world_position.y = heightmapSampled.a;
     }
     else {
@@ -205,7 +205,7 @@ OutputType main(ConstantOutputType input, float3 uvwCoord : SV_DomainLocation, c
     //*
     ///     CALCULATE 'GEOGRAPHIC VARIABLES'
     const float4 seedc = coords;
-    coords = output.world_position + float4(globalPosition.x, 0, globalPosition.y, 0);// ???
+    coords = output.world_position + float4(globalPosition.x, 0, globalPosition.y, 0);//
     const half PI180 = 57.29577;
     const half PI = 3.14159265359;
 // not needed    const float2 uv = output.tex;
@@ -260,7 +260,7 @@ OutputType main(ConstantOutputType input, float3 uvwCoord : SV_DomainLocation, c
     /*DEBUG: output.snowness = HEIGHT.SampleLevel(s0, (output.world_position.zx / 11520.0) + 0.5, 0).b;//heightmapSampled.b;*/
     
     // absolute humidity - relative humidity is less meaningful(?)         <-- fix this algorithm?
-    output.humidity = 0.5*(1.0+cos(latitude * 03.10));
+    output.humidity = 0.5*(1.0+cos(latitude * 3.10f));
     const float output_humidity = 0.2 *
         ((output.temperature - minGlobalTemp) * 0.8// rep 1* w abs
             + (dot(output.wind, -aspect) *0.40)  ); // rainshadow effect - it is more humid on slopes that face the wind

@@ -137,7 +137,7 @@ void TerrainShader::setShaderParameters(ID3D11DeviceContext* deviceContext, cons
 	tessPtr->GlobalPosition = SVars->GlobalPosition;
 	tessPtr->PlanetDiameter = SVars->PlanetDiameter;
 
-#ifndef CPU_TERRAIN_ENABLED
+#ifdef CPU_TERRAIN_ENABLED
 	tessPtr->padding = 1;
 #else
 	tessPtr->padding = -1;

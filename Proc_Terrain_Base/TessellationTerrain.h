@@ -26,6 +26,8 @@ enum Corner // AKA QuadtreeIndex
 };
 #define isNorth(corner) (int(corner) & 1) != 1
 #define isEast(corner) (int(corner) & 2) != 2
+#define is_N_or_S(CompassDirection) (int(CompassDirection) & 1) == 1
+#define is_S_or_E(CompassDirection) (int(CompassDirection) % 3) != 0
 // reverse the binary of a 2 bit number: 2 (10) becomes 1 (01) etc
 #define binReverse(b) ((b & 2) >> 1 | (b & 1) << 1)
 
@@ -38,19 +40,27 @@ class TessellationTerrain :
         SOUTH = 2,
         WEST = 3
     };
-   
+    struct EdgeFlags {
+        // true means, build edge at half resolution.
+        // false means build edge at full resolution
+        bool back = true;
+        bool right = true;
+        bool front = true;
+        bool left = true;
+    };
 
 public:
     // pos: position of this mesh's centre, relative to HM edges [0-1].
     // size: size of this mesh relative to heightmap [0-1]
     TessellationTerrain(ID3D11Device* device, ID3D11DeviceContext* deviceContext, HeightmapType* Heightmap, XMFLOAT2 pos, float size, float total_size, XMFLOAT2* PoD, int resolution = 2);
+    //~TessellationTerrain();
     //void SetHeightmap(std::array<char, HEIGHTMAP_RES>* HeightmapType) { _heightmap = HeightmapType; }
 
 protected:
-    void initBuffers(ID3D11Device* device, XMFLOAT2 pos, float size);
+    void initBuffers(ID3D11Device* device, XMFLOAT2 pos, float size, EdgeFlags EdgeLODTransitionFlags);
     static void sampleElevation(int startPixelU, int startPixelV, float _size, float& positionX, float& positionZ, float& elevation);
     
-    static void BuildEdge(std::vector<VertexType> &vertices, Direction dir, const int detail_difference);
+    static void BuildEdge(std::vector<VertexType>& vertices, std::vector<unsigned long>& indices, Direction dir, const int detail_difference, int startPixelU, int startPixelV, float _size, int &index);
 
     
     static inline int SamplePoint(const int& startPixelU, const int& startPixelV, const float& _size, const float& positionX, const float& positionZ)
@@ -73,7 +83,7 @@ protected:
             y = grid_resolution -1 - y;
             return;
         case SOUTH: // flip both
-            //x = grid_resolution -1 - x;
+            x = grid_resolution -1 - x;
             y = grid_resolution -1 - y;
             return;
         case WEST: // reflect diagonally, flip horizontally
@@ -92,7 +102,7 @@ protected:
             if (c == 3) return northwest;
             return Corner( binReverse(int(c)) ^ 1 ); // reflect diagonally, flip
         case SOUTH:
-            return Corner(int(c)^1); // flip both axes
+            return Corner(int(c)^3); // flip both axes
         case WEST:
             if (c == 3) return southeast;
             return Corner( binReverse(int(c)) ^ 2 ); // reflect diagonally, flip horizontally
@@ -103,21 +113,8 @@ protected:
         static const float increment = 1.0f / float(grid_resolution+1);
         static const float unit = 0.5;
         float positionX, positionZ;
-        //positionX = (float)(isEast(corner) ? x + unit : x - unit) / float(grid_resolution);
-        //positionZ = (float)(isNorth(corner)? y + unit : y - unit) / float(grid_resolution);
-        if (isEast(corner)) {
-            positionX = (float)( x + unit ) / float(grid_resolution);
-        }
-        else {
-            positionX = (float)( x - unit) / float(grid_resolution);
-        }
-        if (isNorth(corner)) {
-            positionZ = (float)( y + unit ) / float(grid_resolution);
-        }
-        else {
-            positionZ = (float)( y - unit) / float(grid_resolution);
-        }
-        
+        positionX = (float)(isEast(corner) ? x + unit : x - unit) / float(grid_resolution);
+        positionZ = (float)(isNorth(corner)? y + unit : y - unit) / float(grid_resolution);      
 
         sampleElevation(startPixelU, startPixelV, size, positionX, positionZ, elevation);
 

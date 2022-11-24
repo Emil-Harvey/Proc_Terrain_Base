@@ -114,7 +114,7 @@ ConstantOutputType PatchConstantFunction(InputPatch<InputType, 3> inputPatch, ui
 
 
 [domain("tri")] //tri, quad, isocline
-[partitioning("fractional_odd")]//fractional_even, fractional_odd, pow2, integer
+[partitioning("fractional_even")]//fractional_even, fractional_odd, pow2, integer
 [outputtopology("triangle_cw")]
 [outputcontrolpoints(3)] // the number of times the shader executes. 1 ctrl pt per output
 [patchconstantfunc("PatchConstantFunction")]
