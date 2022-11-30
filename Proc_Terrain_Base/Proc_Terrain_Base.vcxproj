@@ -225,6 +225,7 @@
     <ClInclude Include="ComputeBlurVert.h" />
     <ClInclude Include="ComputeErosion.h" />
     <ClInclude Include="ComputeLandscape.h" />
+    <ClInclude Include="CreateTGA.h" />
     <ClInclude Include="DepthShader.h" />
     <ClInclude Include="Frustrum.h" />
     <ClInclude Include="Grower.h" />

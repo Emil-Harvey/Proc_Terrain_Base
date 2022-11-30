@@ -503,26 +503,15 @@ void App1::firstPass()
 	renderer->setZBuffer(true);
 
 	
+	/// main terrain
 	
 	Frustum* frustum = new Frustum();
 	frustum->ConstructFrustum(projectionMatrix, viewMatrix);
 	qt_Terrain->render(renderer->getDeviceContext(), terrainShader, worldMatrix /*XMMatrixMultiply(worldMatrix, m_TerrainMatrix)*/, viewMatrix, projectionMatrix, frustum, textures, light, camera, &vars, curHeightmapSRV);
 
-	/// main terrain
-//	m_Terrain->sendData(renderer->getDeviceContext(), D3D11_PRIMITIVE_TOPOLOGY_4_CONTROL_POINT_PATCHLIST);//													
-//	terrainShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(worldMatrix, m_TerrainMatrix), viewMatrix, projectionMatrix, textures, light, camera, &vars, curHeightmapSRV);// XMFLOAT4(tessellationFactor, height * 100, LODnear, LODfar), scale, XMFLOAT2(xOffset, yOffset), timeOfYear);
-//	terrainShader->render(renderer->getDeviceContext(), m_Terrain->getIndexCount());
-
-	
-	/// neighbouring terrains
-	//float xMeshOffset = xz_TerrainMeshOffset * 3;//XMMATRIX xPositionMatrix;
-	//float zMeshOffset = xz_TerrainMeshOffset * 3;//XMMATRIX zPositionMatrix;
-	
-	
-	
 	//		Disable Back Face Culling
-	
 	renderer->set2SidedMode(true);
+		
 	/// foliage (geo shader)
 	if (floraOn) {
 		//renderer->setAlphaBlending(true);
@@ -548,8 +537,6 @@ void App1::firstPass()
 	//renderer->setAlphaBlending(false);
 
 	///	clouds (and rain..)
-	//
-	//renderer->setAlphaBlending(true);
 	
 	m_clouds->sendData(renderer->getDeviceContext()); //
 	cloudShader->setShaderParameters(renderer->getDeviceContext(), XMMatrixMultiply(XMMatrixMultiply(worldMatrix, XMMatrixRotationX(0)), XMMatrixMultiply( XMMatrixScaling(2048.0, 1.0, 2048.0), XMMatrixTranslation(-14000, 1700.0, -14000.0))), viewMatrix, projectionMatrix, cloudTexture, vars.TimeOfYear);
@@ -560,8 +547,6 @@ void App1::firstPass()
 	//cloudShader->render(renderer->getDeviceContext(), m_clouds->getIndexCount());
 
 	renderer->setAlphaBlending(false);
-	
-	 
 
 	// Set back buffer as render target and reset view port.
 	renderer->setBackBufferRenderTarget();
@@ -770,7 +755,7 @@ void App1::initTextures() {
 	const wchar_t* sep = L"_/";
 	const wchar_t* extn = L".png";
 
-	for (int t = 0; t < 2; t++) {//		unfortunately i can't get this to work
+	for (int t = 0; t < 2; t++) {
 		for (int m = 0; m < 9; m++) {
 			// use wstring for simple concatenation -- stackoverflow.com/questions/1855956/
 			std::wstring name = std::wstring(material[m]) + std::wstring(type[t]);// ie "grass_c"
@@ -837,28 +822,27 @@ inline void App1::TransferHeightmapToCPU()
 	renderer->getDeviceContext()->CopyResource(staging_texture, textureResourceGPU);
 
 	HRESULT h;
-	h = renderer->getDeviceContext()->Map(staging_texture, 0, D3D11_MAP_READ, 0, &heightmap_mappedResource); // this line causes memory leak
+	h = renderer->getDeviceContext()->Map(staging_texture, 0, D3D11_MAP_READ, 0, &heightmap_mappedResource); 
 
 	// heightmap_mappedResource.RowPitch contains the value that the runtime adds to pData to move from row to row, where each row contains multiple pixels.
 
 	/// access the raw data from the resource
-	// we know the heightmap is 1600x1600 pixels = 2560000. 
-	// bytes = heightmap_mappedResource.RowPitch * height; = 25600 * 1600 = 40,960,000
-	const int heightmap_size = MAP_DIM * MAP_DIM;
 
-	//XMFLOAT4 temp_arr[1600 * 1600] = {(XMFLOAT4*)heightmap_mappedResource.pData} //std::copy_n(std::begin(), heightmap_size, std::begin(pixelData))//pixelData = ((XMFLOAT4*)heightmap_mappedResource.pData);
-
+	//std::copy_n(heightmap_mappedResource.pData, MAP_DIM * MAP_DIM, pixelData.begin());//XMFLOAT4 temp_arr[1600 * 1600] = {(XMFLOAT4*)heightmap_mappedResource.pData} ////pixelData = ((XMFLOAT4*)heightmap_mappedResource.pData);
+	memcpy(pixelData.data(), heightmap_mappedResource.pData, MAP_DIM * MAP_DIM * 16);
+	/*
 	for (int row = 0; row < MAP_DIM; row++) {
 		for (int pixel = 0; pixel < MAP_DIM; pixel++) {
 			const int pixel_number = pixel + (row * MAP_DIM);
 			pixelData[pixel_number] = (XMFLOAT4)((XMFLOAT4*)heightmap_mappedResource.pData)[pixel_number];
 		}
-	}
+	}//*/
 
 	//qt_Terrain->SetHeightmap(&pixelData); // not even needed
 	//delete textureResourceGPU;
 	//delete textureInterface;*/
 	//return h;
+	renderer->getDeviceContext()->Unmap(staging_texture, 0);// prevent memory leak
 }
 
 // size: fraction<=1 of the quad proportional to the full mesh
@@ -877,4 +861,43 @@ void App1::QuadtreeHeightmap( QuadtreeNode* node)
 	csLand->compute(renderer->getDeviceContext(), MAP_DIM / 8, MAP_DIM / 8, 1); // MAP_DIM = 4096
 	csLand->unbind(renderer->getDeviceContext());
 
+	TransferHeightmapToCPU();
+
+#define RAW 1
+#define TGA 0
+#define HEIGHTMAP_EXPORT_MODE RAW
+
+#if HEIGHTMAP_EXPORT_MODE == TGA
+	/// create grayscale TGA file from data (8 bit depth)
+	// Transfer Red channel to grayscale
+	uint8_t* pixelArrayGray = new uint8_t[4096 * 4096];//std::array<uint8_t, 4096 * 4096> pixelArrayGray;//uint8_t pixelArrayGray[4096 * 4096];
+	
+	constexpr float scale_factor = UINT_MAX / 512.0f;
+	constexpr unsigned int int32to8 = UINT_MAX / UINT8_MAX;
+	for (int p = 0; p < MAP_DIM * MAP_DIM * 4; p+=4) // only look at every 4th float, ie. the R of RGBA
+	{
+		// scale_factor is used to stretch the height values, so that the tallest height = UINT_MAX
+		float redValue = ((float*)pixelData.data())[p] * scale_factor;
+		// convert float to 32 bit uint, shrink values down to 8 bits, then cast to uint8
+		pixelArrayGray[p / 4] = uint8_t((uint32_t(redValue)) / int32to8);	
+	}
+
+	// write data to TGA file
+	tga_write("Exported Data/test.tga", 4096, 4096, pixelArrayGray, 1U); // 1 channel - grayscale
+
+#elif HEIGHTMAP_EXPORT_MODE == RAW
+	/// create grayscale .raw file from data (32 bit depth)
+	// Transfer Red channel to grayscale
+	float* pixelArrayGray = new float[4096 * 4096];//std::array<uint8_t, 4096 * 4096> pixelArrayGray;//uint8_t pixelArrayGray[4096 * 4096];
+
+	constexpr float scale_factor = UINT_MAX / 1024.0f;
+	for (int p = 0; p < MAP_DIM * MAP_DIM * 4; p += 4) // only look at every 4th float, ie. the R of RGBA
+	{
+		// scale_factor is used to stretch the height values, so that the tallest height = UINT_MAX
+		pixelArrayGray[p / 4] = ((float*)pixelData.data())[p] * scale_factor;
+	}
+
+	create_raw("Exported Data/test.raw", MAP_DIM, MAP_DIM, pixelArrayGray);
+#endif
 }
+

@@ -2,7 +2,7 @@
 #pragma once
 
 #define CPU_TERRAIN_ENABLED //when this is enabled, heightmap is trasferred to CPU and mesh is displaced there.
-#undef CPU_TERRAIN_ENABLED
+//#undef CPU_TERRAIN_ENABLED
 
 // Includes
 #include "DXF.h"	// include dxframework
@@ -23,7 +23,7 @@
 #include "ComputeLandscape.h"
 #include "ComputeErosion.h"
 #include "QuadTreeMesh.h"//"QuadTreeClass.h"
-
+#include "CreateTGA.h"
 //#include <wrl\client.h>// ComPtr
 #include <array>
 
@@ -125,7 +125,7 @@ private:
 	const int tessellationFactor =6;
 	const float waterAmplitude = 1.5f;
 	//sphere
-	XMFLOAT3 testPosition = { 0,-16,0 };
+	//XMFLOAT3 testPosition = { 0,-16,0 };
 	bool gameSettingsMenuActive = false;
 	//
 	///
@@ -140,7 +140,8 @@ private:
 	ID3D11ShaderResourceView* curHeightmapSRV;
 	D3D11_MAPPED_SUBRESOURCE heightmap_mappedResource;
 	const int MAP_DIM = 4096;
-	std::array<XMFLOAT4, 1600 * 1600> pixelData{};
+	//std::array<XMFLOAT4, 1600 * 1600> pixelData{};
+	std::array<uint8_t, 4096 * 4096 * 16> pixelData{};
 };
 
 

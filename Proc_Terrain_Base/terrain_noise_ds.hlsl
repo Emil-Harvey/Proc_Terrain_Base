@@ -63,6 +63,9 @@ struct OutputType
     float humidity : PSIZE5;
     float2 wind : TEXCOORD3;
 };
+
+#define TERRAIN_SIZE 45000.0
+
 float bfm(float2 pos, int octaves);
 float perlin(float2 world_position, float speed = 0);
 float terragen(float2 coords, int octs);
@@ -85,6 +88,7 @@ float invsmoothstep(float y)
     t -= (t * (4.0 * t * t - 3.0) + yn) / (12.0 * t * t - 3.0);
     return t + 0.5;
 }
+
 float get_terrain_height(float2 input, float octaves) { // old noise height function
     float ret;
     float continental_noise = 1 * ( bfm((input + 800) / (4900.7 * scale), 4)+(0.2*perlin(input/(500 * scale))) );
@@ -119,12 +123,12 @@ float3 calculateNormal(float2 pos, float h = 5.0 / 5.0f)
     float3 bitangent;
     const float2 ux = float2(pos.x - h, pos.y); //neighbour to left
     const float2 vx = float2(pos.x + h, pos.y); //neighbour to right
-    float xdy = 1 * HEIGHT.SampleLevel(s0, (ux / 15000.0) + 0.5, 1).a - 1 * HEIGHT.SampleLevel(s0, (vx / 15000.0) + 0.5, 1).a;
+    float xdy = 1 * HEIGHT.SampleLevel(s0, (ux / TERRAIN_SIZE) + 0.5, 1).a - 1 * HEIGHT.SampleLevel(s0, (vx / TERRAIN_SIZE) + 0.5, 1).a;
     tangent = normalize(float3(2 * h, xdy, 0));
     // same for bitangent but in z dimension
     const float2 uz = float2(pos.x, pos.y - h); //behind
     const float2 vz = float2(pos.x, pos.y + h); //in front
-    float zdy = 1 * HEIGHT.SampleLevel(s0, (uz / 15000.0) + 0.5, 1).a - 1 * HEIGHT.SampleLevel(s0, (vz / 15000.0) + 0.5, 1).a;
+    float zdy = 1 * HEIGHT.SampleLevel(s0, (uz / TERRAIN_SIZE) + 0.5, 1).a - 1 * HEIGHT.SampleLevel(s0, (vz / TERRAIN_SIZE) + 0.5, 1).a;
     bitangent = normalize(float3(0, zdy, -2 * h));
 
     return normalize(cross(tangent, bitangent));
@@ -175,14 +179,14 @@ OutputType main(ConstantOutputType input, float3 uvwCoord : SV_DomainLocation, c
     float4 heightmapSampled;
     
     if (abs(output.world_position.x) < 7500.0 && abs(output.world_position.z) < 7500.0) {
-        heightmapSampled = HEIGHT.SampleLevel(s0, (output.world_position.xz / 15000.0) + 0.5, 0);// vertexPosition.xz//
+        heightmapSampled = HEIGHT.SampleLevel(s0, (output.world_position.xz / TERRAIN_SIZE) + 0.5, 0); // vertexPosition.xz//
         //if (flags <0)
-            output.world_position.y = heightmapSampled.a;
+        //    output.world_position.y = heightmapSampled.a;
     }
     else {
-        heightmapSampled = HEIGHT.SampleLevel(s0, (output.world_position.xz / 45000.0) + 0.5, 0);// vertexPosition.xz//
-        if (flags < 0)
-            output.world_position.y = heightmapSampled.b;
+        heightmapSampled = HEIGHT.SampleLevel(s0, (output.world_position.xz / TERRAIN_SIZE) + 0.5, 0); // vertexPosition.xz//
+        //if (flags < 0)
+        //    output.world_position.y = heightmapSampled.b;
     }
 
     //       CALCULATE NORMALS              Send the normal, light into the ps

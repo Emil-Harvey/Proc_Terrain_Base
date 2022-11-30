@@ -224,20 +224,20 @@ void main(int3 groupThreadID : SV_GroupThreadID,
 
 	
 
-    output.a = height * scale* 0.1; //40+sin(degrees(coords.y)) * 40.f;//
-    output.r = macro_height /(40.f*scale);//humidity
+    output.a = height * scale* 0.5;
+    output.r = max(height / (0.06f * scale), 0); 
 
-    output.g = slope; // / manipulationDetails.z;
-    output.b = macro_height;//0.01 * height / (1+pow(manipulationDetails.z,3));
+    output.g = slope;
+    output.b = macro_height/100.0;
     //if (height < 0) { output.b = 1+height; }
     /// output.rgb -> humidity & wind?
 
     /*/ debug: for the pData array
     output.a = 1.0f;
-    output.r = 1024.0f;
+    //output.r = dispatchThreadID.x / 1024.0f;
     output.g = dispatchThreadID.x;
     output.b = dispatchThreadID.y;//*/
-    output.rgb = height / 180.f; output.g = macro_height /(40.f*scale);
+    //output.rgb = height / 180.f; output.g = macro_height /(40.f*scale);
 	gOutput[dispatchThreadID.xy] = output;
 
     //output = gOutput[(int2)(((dispatchThreadID.xy - 750) * macroScale) + 750)];

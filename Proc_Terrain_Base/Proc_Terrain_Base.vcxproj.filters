@@ -19,6 +19,15 @@
     <Filter Include="Resource Files\Compute Shaders">
       <UniqueIdentifier>{97fd13f8-fbeb-44fc-9939-008a026fc4ae}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Resource Files\Pixel Shaders">
+      <UniqueIdentifier>{49fca78e-c254-4de9-8b99-fd860dde6dcc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resource Files\Vertex Shaders">
+      <UniqueIdentifier>{57a4cc49-40b3-4e6c-b586-56ae36d10ed2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Utility">
+      <UniqueIdentifier>{83609a0f-d4c6-4139-a405-e2140488f8ff}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="App1.cpp">
@@ -98,9 +107,6 @@
     <ClInclude Include="TerrainMesh.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Noise.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Grower.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -155,48 +161,24 @@
     <ClInclude Include="TessellationTerrain.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="CreateTGA.h">
+      <Filter>Header Files\Utility</Filter>
+    </ClInclude>
+    <ClInclude Include="Noise.h">
+      <Filter>Header Files\Utility</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="shaders\light_vs.hlsl">
-      <Filter>Resource Files</Filter>
-    </FxCompile>
-    <FxCompile Include="tree_ps.hlsl">
-      <Filter>Resource Files</Filter>
-    </FxCompile>
     <FxCompile Include="tree_gs.hlsl">
       <Filter>Resource Files</Filter>
     </FxCompile>
-    <FxCompile Include="tree_vs.hlsl">
-      <Filter>Resource Files</Filter>
-    </FxCompile>
-    <FxCompile Include="tess_vs.hlsl">
-      <Filter>Resource Files</Filter>
-    </FxCompile>
     <FxCompile Include="water_ds.hlsl">
-      <Filter>Resource Files</Filter>
-    </FxCompile>
-    <FxCompile Include="water_ps.hlsl">
-      <Filter>Resource Files</Filter>
-    </FxCompile>
-    <FxCompile Include="sun_ps.hlsl">
-      <Filter>Resource Files</Filter>
-    </FxCompile>
-    <FxCompile Include="texture_ps.hlsl">
-      <Filter>Resource Files</Filter>
-    </FxCompile>
-    <FxCompile Include="texture_vs.hlsl">
-      <Filter>Resource Files</Filter>
-    </FxCompile>
-    <FxCompile Include="cloud_ps.hlsl">
       <Filter>Resource Files</Filter>
     </FxCompile>
     <FxCompile Include="cloud_gs.hlsl">
       <Filter>Resource Files</Filter>
     </FxCompile>
     <FxCompile Include="tess_depth_ds.hlsl">
-      <Filter>Resource Files</Filter>
-    </FxCompile>
-    <FxCompile Include="depth_ps.hlsl">
       <Filter>Resource Files</Filter>
     </FxCompile>
     <FxCompile Include="terrain_noise_ds.hlsl">
@@ -219,6 +201,36 @@
     </FxCompile>
     <FxCompile Include="tess_hs.hlsl">
       <Filter>Resource Files\Terrain Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="cloud_ps.hlsl">
+      <Filter>Resource Files\Pixel Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="sun_ps.hlsl">
+      <Filter>Resource Files\Pixel Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="texture_ps.hlsl">
+      <Filter>Resource Files\Pixel Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="tree_ps.hlsl">
+      <Filter>Resource Files\Pixel Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="water_ps.hlsl">
+      <Filter>Resource Files\Pixel Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="shaders\light_vs.hlsl">
+      <Filter>Resource Files\Vertex Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="tess_vs.hlsl">
+      <Filter>Resource Files\Vertex Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="texture_vs.hlsl">
+      <Filter>Resource Files\Vertex Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="tree_vs.hlsl">
+      <Filter>Resource Files\Vertex Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="depth_ps.hlsl">
+      <Filter>Resource Files\Pixel Shaders</Filter>
     </FxCompile>
   </ItemGroup>
   <ItemGroup>

@@ -5,8 +5,9 @@
 #include <vector>
 
 using std::swap;
-#define HEIGHTMAP_DIM 1600
-typedef std::array<XMFLOAT4, HEIGHTMAP_DIM*HEIGHTMAP_DIM> HeightmapType;
+#define HEIGHTMAP_DIM 4096 //1600
+typedef std::array<uint8_t, HEIGHTMAP_DIM*HEIGHTMAP_DIM * 16> HeightmapType;
+
 template <class Type>
 static Type* ArrayFromVector(const std::vector< Type >& v)
 {
@@ -24,12 +25,15 @@ enum Corner // AKA QuadtreeIndex
     northwest = 2, // -X, +Y    | true, false;  10
     southwest = 3  // -X, -Y    | true, true;   11
 };
+
 #define isNorth(corner) (int(corner) & 1) != 1
 #define isEast(corner) (int(corner) & 2) != 2
 #define is_N_or_S(CompassDirection) (int(CompassDirection) & 1) == 1
 #define is_S_or_E(CompassDirection) (int(CompassDirection) % 3) != 0
 // reverse the binary of a 2 bit number: 2 (10) becomes 1 (01) etc
 #define binReverse(b) ((b & 2) >> 1 | (b & 1) << 1)
+
+
 
 class TessellationTerrain :
     public PlaneMesh
@@ -62,7 +66,7 @@ protected:
     
     static void BuildEdge(std::vector<VertexType>& vertices, std::vector<unsigned long>& indices, Direction dir, const int detail_difference, int startPixelU, int startPixelV, float _size, int &index);
 
-    
+    /// calculate the pixel number to sample based on the given vertex position 
     static inline int SamplePoint(const int& startPixelU, const int& startPixelV, const float& _size, const float& positionX, const float& positionZ)
     {
         return min(

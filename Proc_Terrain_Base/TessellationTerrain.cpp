@@ -18,10 +18,10 @@ TessellationTerrain::TessellationTerrain(ID3D11Device* device, ID3D11DeviceConte
 	// if pos < x1 < x2 (pos is outside): then subsample x2.
 	// if x1 < pos < x2 (pos is inside or aligned in x axis): then do not subsample x1 or x2.
 	// same logic applies in other direction, and in Y axis
-	float left_edge  = pos.x + (size * -2.0);
-	float right_edge = pos.x + (size * +2.0);
-	float front_edge = pos.y + (size * -2.0);
-	float back_edge  = pos.y + (size * +2.0);
+	float left_edge  = pos.x + (size * -4.0);
+	float right_edge = pos.x + (size * +4.0);
+	float front_edge = pos.y + (size * -4.0);
+	float back_edge  = pos.y + (size * +4.0);
 	EdgeFlags edges;
 	if (_positionOfDetail->x < left_edge)
 		edges.left = false;
@@ -172,28 +172,11 @@ inline void TessellationTerrain::sampleElevation(int startPixelU, int startPixel
 {
 	if (_heightmap) {
 
-		/*if (((flags.left && positionX <= -0.5) || (flags.right && positionX >= 0.5)) && int(positionZ * grid_resolution) % 2 == 0)
-		{/// if edge vertex, only sample every 2nd one, to avoid SEAMS
-			//odd numbered, so dont sample here but rather use the midpoint of the neighbours, as if bisecting a straight line 
-			return false;
-			//int neighbour_A_samplePoint = SamplePoint(pU, pV, s, positionX, positionZ + (1.f/(float)resMinus1));
-			//int neighbour_B_samplePoint = SamplePoint(pU, pV, s, positionX, positionZ - (1.f/(float)resMinus1));
-			//elevation =
-			//	((*_heightmap)[neighbour_A_samplePoint].w + (*_heightmap)[max(neighbour_B_samplePoint,0)].w) / 2.0f;
-		}
-		else if (((flags.front && positionZ <= -0.5) || (flags.back && positionZ >= 0.5)) && int(positionZ * grid_resolution) % 2 == 0)
-		{/// same as above but for other axis
-			return false;
-			//int neighbour_A_samplePoint = SamplePoint(pU, pV, s, positionX + (1.f / (float)resMinus1), positionZ);
-			//int neighbour_B_samplePoint = SamplePoint(pU, pV, s, positionX - (1.f / (float)resMinus1), positionZ);
-			//elevation =
-			//	((*_heightmap)[neighbour_A_samplePoint].w + (*_heightmap)[max(neighbour_B_samplePoint,0)].w) / 2.0f;	
-		}
-		else {// middle vertex- sample normally*/
-			int samplePoint = SamplePoint(startPixelU, startPixelV, _size, positionX, positionZ);
-			elevation = (*_heightmap)[samplePoint].w;// alpha channel of heightmap
-			//return true;
-		//}
+
+		int samplePoint = SamplePoint(startPixelU, startPixelV, _size, positionX, positionZ);
+		
+		elevation = ((XMFLOAT4*)_heightmap->data())[max(samplePoint, 0)].w;// alpha channel of heightmap
+
 	}
 }
 // create the border vertices of the mesh

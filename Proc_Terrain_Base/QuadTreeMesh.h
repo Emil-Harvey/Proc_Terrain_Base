@@ -9,8 +9,8 @@
 #include "Frustrum.h"
 #include <array>
 
-#define HEIGHTMAP_DIM 1600
-typedef std::array<XMFLOAT4, HEIGHTMAP_DIM* HEIGHTMAP_DIM> HeightmapType;
+// already defined //#define HEIGHTMAP_DIM 4096 //1600
+//typedef std::array<uint8_t, HEIGHTMAP_DIM*HEIGHTMAP_DIM * 16> HeightmapType;
 typedef Corner QuadtreeIndex;
 
 ///=====================<CLASS--QUADTREENODE>=====================================>
