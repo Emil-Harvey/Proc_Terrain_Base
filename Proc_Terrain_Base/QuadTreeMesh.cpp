@@ -19,7 +19,7 @@ void QuadTreeMesh::render(ID3D11DeviceContext* dc, TerrainShader* shader, const 
     position = pos;
     this->size = size;
 
-#ifndef CPU_TERRAIN_ENABLED
+#ifdef CPU_TERRAIN_ENABLED
     const int resolution = 9;// has to be odd. also some numbers don't work, not sure why
     geometry = new TessellationTerrain(d, dc, heightmap, pos, size, total_size, posOfDetail, resolution);
 #else
@@ -69,8 +69,8 @@ void QuadTreeMesh::render(ID3D11DeviceContext* dc, TerrainShader* shader, const 
 
         subNodes[i] = unique_ptr<QuadtreeNode> (new QuadtreeNode(d, dc, newPos, size / 2.f, &targetPosition));
         // if this node is not at
-        if (depth > 0 && /*indexToSubdivide == i*/ weight - 5.0f < size * 0.50f) {
-
+        if (depth > 0 )//&& /*indexToSubdivide == i*/ weight - 5.0f < size * 0.50f) 
+        {
             subNodes[i]->subdivide(d, dc, targetPosition, depth - 1);
         }
 

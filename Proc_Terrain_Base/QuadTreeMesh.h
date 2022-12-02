@@ -46,16 +46,6 @@ public:
 class QuadTreeMesh //: public TessellationMesh
 {
     /// a mesh made of constituent tessellationplanes, that dynamically use a quadtree system
-    ///Recursion
-    /*
-    enum QuadtreeIndex {
-        // in binary order- if x>=0: 0, else: 1. same for y but in second digit. ergo +X,+Y = 00; -X,-Y = 11; etc.
-        northeast = 0, // +X, +Y    | false, false; 00
-        southeast = 1, // +X, -Y    | false, true;  01
-        northwest = 2, // -X, +Y    | true, false;  10
-        southwest = 3  // -X, -Y    | true, true;   11
-    };*/
-
 
 public:
 
@@ -116,9 +106,11 @@ public:
     }
     static float getWeightedIndexOfPosition(XMFLOAT2 lookupPosition, XMFLOAT2 nodePosition, int depth, float radius = 5.0f)
     {
-        // returns length between node position and lookup position
-        XMVECTOR v = { lookupPosition.x - nodePosition.x,lookupPosition.y - nodePosition.y };
-        return XMVector2Length(v).m128_f32[0];
+        return min(lookupPosition.x - nodePosition.x, lookupPosition.y - nodePosition.y);
+
+        /// returns length between node position and lookup position
+        //XMVECTOR v = { lookupPosition.x - nodePosition.x,lookupPosition.y - nodePosition.y };
+        //return XMVector2Length(v).m128_f32[0];
     }
 
 private:

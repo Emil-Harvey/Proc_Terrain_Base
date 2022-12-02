@@ -64,7 +64,7 @@ void App1::init(HINSTANCE hinstance, HWND hwnd, int screenWidth, int screenHeigh
 	cameraDepth = new ShadowMap(renderer->getDevice(), screenWidth, screenHeight);
 
 	/// Terrain stuff
-	qt_Terrain = new QuadTreeMesh(renderer->getDevice(), renderer->getDeviceContext(), { 0.0,0.0 }, 45000.0, 4, {0.0,0.0});
+	qt_Terrain = new QuadTreeMesh(renderer->getDevice(), renderer->getDeviceContext(), { 0.0,0.0 }, 45000.0, 2, {0.0,0.0});
 
 	f_Terrain = new PlaneMesh(renderer->getDevice(), renderer->getDeviceContext(), 280);
 
@@ -264,7 +264,7 @@ bool App1::frame()
 	if(chunkUpdatesEnabled){
 	// if player moves to chunk border, reset position (relative to chunk) & update global offset (not seed) - illusion of seamless/infinite movement
 	static const int chunk = 2050*2;
-	const float xxxg = 3.1f;// idk why this is a random number it should be 1
+	const float xxxg = 1.0f;//3.1f;// idk why this is a random number it should be 1
 	if (camera->getPosition().x < -chunk) 
 	{
 		vars.GlobalPosition.x -= chunk * xxxg;
@@ -294,7 +294,7 @@ bool App1::frame()
 	XMFLOAT2 camera_xz = { camera->getPosition().x, camera->getPosition().z };
 	static XMFLOAT2 old_camera_xz;
 	if(camera_xz.x != old_camera_xz.x && camera_xz.y != old_camera_xz.y)
-		qt_Terrain->Reconstruct(renderer->getDevice(), renderer->getDeviceContext(), 4, camera_xz);// careful of memory leak
+		qt_Terrain->Reconstruct(renderer->getDevice(), renderer->getDeviceContext(), 2, camera_xz);// careful of memory leak
 		old_camera_xz = camera_xz;
 	}
 
@@ -504,7 +504,7 @@ void App1::firstPass()
 
 	
 	/// main terrain
-	
+	/**/
 	Frustum* frustum = new Frustum();
 	frustum->ConstructFrustum(projectionMatrix, viewMatrix);
 	qt_Terrain->render(renderer->getDeviceContext(), terrainShader, worldMatrix /*XMMatrixMultiply(worldMatrix, m_TerrainMatrix)*/, viewMatrix, projectionMatrix, frustum, textures, light, camera, &vars, curHeightmapSRV);
@@ -633,32 +633,17 @@ void App1::gui()
 
 	ImGui::SliderFloat("##latitude", &vars.GlobalPosition.y, -2.0f*vars.PlanetDiameter, 2.0f*vars.PlanetDiameter, "Latitude: %.2f", 3.0f);
 	ImGui::SliderFloat("##Planetdiameter", &vars.PlanetDiameter, 50, 127420, "Planet Diameter: %.2f", 5.0f);
+	ImGui::SliderFloat("##amp", &vars.Amplitude, 0.01, 1000, "Amplitude: %.2f",2.0f);
 
 	ImGui::Begin("Quadtree Heightmap ");
 	QuadtreeNode* node_to_render = nullptr;
 	if (ImGui::Button("LOD0-Root")) {
 		node_to_render = qt_Terrain->getRoot();
-		QuadtreeHeightmap(node_to_render);
-	}if (ImGui::Button("LOD1-Root-NE")) {
-		node_to_render = qt_Terrain->getRoot()->Nodes()->at(northeast).get();
-		QuadtreeHeightmap(node_to_render);
-	}if (ImGui::Button("LOD1-Root-SE")) {
-		node_to_render = qt_Terrain->getRoot()->Nodes()->at(southeast).get();
-		QuadtreeHeightmap(node_to_render);
-	}if (ImGui::Button("LOD1-Root-SW")) {
-		node_to_render = qt_Terrain->getRoot()->Nodes()->at(southwest).get();
-		QuadtreeHeightmap(node_to_render);
-	}if (ImGui::Button("LOD1-Root-NW")) {
-		node_to_render = qt_Terrain->getRoot()->Nodes()->at(northwest).get();
-		QuadtreeHeightmap(node_to_render);
+		RecursiveHeightmapExport(node_to_render);//QuadtreeHeightmap(node_to_render);	
 	}
-	if (ImGui::Button("LOD1-Root-NE-SW")) {
-		node_to_render = qt_Terrain->getRoot()->Nodes()->at(northeast).get()->Nodes()->at(southwest).get();
-		QuadtreeHeightmap(node_to_render);
-	}
-	if (ImGui::Button("LOD1-Root-NE-SE")) {
-		node_to_render = qt_Terrain->getRoot()->Nodes()->at(northeast).get()->Nodes()->at(southeast).get();
-		QuadtreeHeightmap(node_to_render);
+	if (ImGui::Button("Root-Preview")) {
+		node_to_render = qt_Terrain->getRoot();
+		QuadtreeHeightmap(node_to_render,"preview.tga");
 	}
 	ImGui::End();
 
@@ -725,70 +710,13 @@ void App1::gui()
 
 	ImGui::End();
 
-	/*
-	ImGui::Begin("Test  options");
-		auto v = camera->getViewMatrix();
-		float pos[4] = { v.r[0].m128_f32[0],v.r[0].m128_f32[1],v.r[0].m128_f32[2],v.r[0].m128_f32[3] };
-		float pas[4] = { v.r[1].m128_f32[0],v.r[1].m128_f32[1],v.r[1].m128_f32[2],v.r[1].m128_f32[3] };
-		float pus[4] = { v.r[2].m128_f32[0],v.r[2].m128_f32[1],v.r[2].m128_f32[2],v.r[2].m128_f32[3] };
-		v = XMMatrixInverse(&XMMatrixDeterminant(v), v);
-		float pes[4] = { v.r[3].m128_f32[0],v.r[3].m128_f32[1],v.r[3].m128_f32[2],v.r[3].m128_f32[3] };
-		ImGui::SliderFloat4("a", pos, 0, 1);
-		ImGui::SliderFloat4("b", pas, 0, 1);
-		ImGui::SliderFloat4("c", pus, 0, 1);
-		ImGui::SliderFloat4("d", pes, 0, 1);
-		//testPosition = { pos[0], pos[1], pos[2] };
-	ImGui::End();//*/
+
 
 	// Render UI
 	ImGui::Render();
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 }
 
-void App1::initTextures() {
-//			
-
-	const wchar_t* material[9] = { L"grass",L"stone",L"snow",L"rock",L"water",L"sand",L"mulch",L"gravel",L"savan" };
-	const wchar_t* type[2] = { L"_as",L"_nh" };//{ L"_c",L"_h",L"_n",L"_s" };
-
-	const wchar_t* path = L"res/nice textures/";
-	const wchar_t* sep = L"_/";
-	const wchar_t* extn = L".png";
-
-	for (int t = 0; t < 2; t++) {
-		for (int m = 0; m < 9; m++) {
-			// use wstring for simple concatenation -- stackoverflow.com/questions/1855956/
-			std::wstring name = std::wstring(material[m]) + std::wstring(type[t]);// ie "grass_c"
-			std::wstring fpath = std::wstring(path) + std::wstring(material[m]) + std::wstring(sep) + std::wstring(name) + std::wstring(extn);
-			// ie "res/nice textures/grass_/grass_c.png"
-			textureMgr->loadTexture(name.c_str(), fpath.c_str());
-			
-			// put the texture in the array ready for the shader
-			textures[m + (t * 8)] = textureMgr->getTexture(name.c_str());		
-		}
-	}
-	
-
-	// flora	(use "oak2.png" etc for low res textures)								
-	textureMgr->loadTexture(L"grass",			  L"res/flora/grass.png");
-	textureMgr->loadTexture(L"pine",	     L"res/flora/pine.png");
-	textureMgr->loadTexture(L"beech_n", L"res/flora/pbr/beech_n.png");
-	textureMgr->loadTexture(L"beech_c",         L"res/flora/pbr/beech_c.png");
-
-	trees[0] = textureMgr->getTexture(L"grass");
-	trees[1] = textureMgr->getTexture(L"pine");
-	trees[2] = textureMgr->getTexture(L"beech_n");
-	trees[3] = textureMgr->getTexture(L"beech_c");
-
-	textureMgr->loadTexture(L"cloud", L"res/nice textures/cloud.png");
-	cloudTexture = textureMgr->getTexture(L"cloud");
-	textureMgr->loadTexture(L"rain", L"res/nice textures/rain.png");
-	rainTexture = textureMgr->getTexture(L"rain");
-	textureMgr->loadTexture(L"macro", L"res/macro_variation.png");
-	macroTexture = textureMgr->getTexture(L"macro");
-	//textureMgr->loadTexture(L"foo", L"res/test.png");
-	//cloudTexture = textureMgr->getTexture(L"foo");
-}
 
 inline void App1::TransferHeightmapToCPU() 
 {//*
@@ -847,7 +775,7 @@ inline void App1::TransferHeightmapToCPU()
 
 // size: fraction<=1 of the quad proportional to the full mesh
 // position: world position of the quad center relative to the full mesh center
-void App1::QuadtreeHeightmap( QuadtreeNode* node)
+void App1::QuadtreeHeightmap( QuadtreeNode* node, const char* filename)
 {
 	//
 	const float size = node->Size() / node->total_size;
@@ -855,7 +783,7 @@ void App1::QuadtreeHeightmap( QuadtreeNode* node)
 
 	ShaderVariables alt_vars = vars;
 	alt_vars.GlobalPosition = { alt_vars.GlobalPosition.x + position.x, alt_vars.GlobalPosition.y + position.y };
-	alt_vars.Amplitude = size;//alt_vars.Scale /= size;
+	alt_vars.PlanetDiameter = size;//alt_vars.Scale /= size;
 
 	csLand->setShaderParameters(renderer->getDeviceContext(), curHeightmapSRV, &alt_vars);
 	csLand->compute(renderer->getDeviceContext(), MAP_DIM / 8, MAP_DIM / 8, 1); // MAP_DIM = 4096
@@ -872,7 +800,7 @@ void App1::QuadtreeHeightmap( QuadtreeNode* node)
 	// Transfer Red channel to grayscale
 	uint8_t* pixelArrayGray = new uint8_t[4096 * 4096];//std::array<uint8_t, 4096 * 4096> pixelArrayGray;//uint8_t pixelArrayGray[4096 * 4096];
 	
-	constexpr float scale_factor = UINT_MAX / 512.0f;
+	constexpr float scale_factor = UINT_MAX / 128.0f;
 	constexpr unsigned int int32to8 = UINT_MAX / UINT8_MAX;
 	for (int p = 0; p < MAP_DIM * MAP_DIM * 4; p+=4) // only look at every 4th float, ie. the R of RGBA
 	{
@@ -883,7 +811,7 @@ void App1::QuadtreeHeightmap( QuadtreeNode* node)
 	}
 
 	// write data to TGA file
-	tga_write("Exported Data/test.tga", 4096, 4096, pixelArrayGray, 1U); // 1 channel - grayscale
+	tga_write(filename, MAP_DIM, MAP_DIM, pixelArrayGray, 1U); // 1 channel - grayscale
 
 #elif HEIGHTMAP_EXPORT_MODE == RAW
 	/// create grayscale .raw file from data (32 bit depth)
@@ -897,7 +825,125 @@ void App1::QuadtreeHeightmap( QuadtreeNode* node)
 		pixelArrayGray[p / 4] = ((float*)pixelData.data())[p] * scale_factor;
 	}
 
-	create_raw("Exported Data/test.raw", MAP_DIM, MAP_DIM, pixelArrayGray);
+	create_raw(filename, MAP_DIM, MAP_DIM, pixelArrayGray);
 #endif
+
 }
 
+void App1::RecursiveHeightmapExport(QuadtreeNode* node, string namePrefix)
+{
+
+	const string suffix = (HEIGHTMAP_EXPORT_MODE ? ".raw" : ".tga");
+	const string filename = namePrefix + suffix;
+	
+	QuadtreeHeightmap(node, filename.c_str());
+	
+	//base case
+	if (node->isLeaf()) return;
+
+	//else recurse
+	//for (int n = 0; n<4; n++) 
+	//{
+	//	//*node->Nodes()
+	//	//subnode
+	//}
+	RecursiveHeightmapExport(node->Nodes()->at(northwest).get(), namePrefix + ".0000");
+	RecursiveHeightmapExport(node->Nodes()->at(northeast).get(), namePrefix + ".0001");
+	RecursiveHeightmapExport(node->Nodes()->at(southeast).get(), namePrefix + ".0002");
+	RecursiveHeightmapExport(node->Nodes()->at(southwest).get(), namePrefix + ".0003");
+}
+
+
+void App1::initTextures() {
+	//			
+/*
+	const wchar_t* material[9] = { L"grass",L"stone",L"snow",L"rock",L"water",L"sandy",L"mulch",L"gravel",L"savan" };
+	const wchar_t* type[2] = { L"_as",L"_nh" };//{ L"_c",L"_h",L"_n",L"_s" };
+
+	const wchar_t* path = L"res/nice textures/";
+	const wchar_t* sep = L"_/";
+	const wchar_t* extn = L".png";
+
+	for (int t = 0; t < 2; t++) {
+		for (int m = 0; m < 9; m++) {
+			// use wstring for simple concatenation -- stackoverflow.com/questions/1855956/
+			std::wstring name = wstring(material[m]) + wstring(type[t]);// ie "grass_c"
+			std::wstring fpath = wstring(path) + wstring(material[m]) + wstring(sep) + wstring(name) + wstring(extn);
+			// ie "res/nice textures/grass_/grass_c.png"
+			textureMgr->loadTexture(name.c_str(), fpath.c_str());//
+
+			// put the texture in the array ready for the shader
+			textures[m + (t * 8)] = textureMgr->getTexture(name.c_str());
+		}
+	}
+//*/
+
+	textureMgr->loadTexture(L"grass_c", L"res/nice textures/grass_/grass_as.png");
+	textureMgr->loadTexture(L"grass_n", L"res/nice textures/grass_/grass_nh.png");
+	//
+	textureMgr->loadTexture(L"stone_c", L"res/nice textures/stone_/stone_as.png");
+	textureMgr->loadTexture(L"stone_n", L"res/nice textures/stone_/stone_nh.png");
+	//
+	textureMgr->loadTexture(L"snow_c", L"res/nice textures/snow_/snow_as.png");
+	textureMgr->loadTexture(L"snow_n", L"res/nice textures/snow_/snow_nh.png");
+	//
+	textureMgr->loadTexture(L"rock_c", L"res/lofi textures/rock_/rock_c.png");
+	textureMgr->loadTexture(L"rock_n", L"res/nice textures/rock_/rock_nh.png");
+	//
+	textureMgr->loadTexture(L"water_c", L"res/nice textures/water_/water_as.png");
+	textureMgr->loadTexture(L"water_n", L"res/nice textures/water_/water_nh.png");
+	//
+	textureMgr->loadTexture(L"sand_c", L"res/nice textures/sand_/sand_as.png");
+	textureMgr->loadTexture(L"sand_n", L"res/nice textures/sand_/sand_nh.png");
+	//
+	textureMgr->loadTexture(L"mulch_c", L"res/nice textures/mulch_/mulch_as.png");
+	textureMgr->loadTexture(L"mulch_n", L"res/nice textures/mulch_/mulch_nh.png");
+	//
+	textureMgr->loadTexture(L"gravel_c", L"res/nice textures/gravel_/gravel_as.png");
+	textureMgr->loadTexture(L"gravel_n", L"res/nice textures/gravel_/gravel_nh.png");
+	//
+	textureMgr->loadTexture(L"savan_c", L"res/nice textures/savan_/savan_as.png");
+	textureMgr->loadTexture(L"savan_n", L"res/nice textures/savan_/savan_nh.png");
+
+	// albedo/specular maps (c for colour)
+	textures[0] = textureMgr->getTexture(L"grass_c");
+	textures[1] = textureMgr->getTexture(L"stone_c");
+	textures[2] = textureMgr->getTexture(L"snow_c");
+	textures[3] = textureMgr->getTexture(L"rock_c");
+	textures[4] = textureMgr->getTexture(L"water_c");
+	textures[5] = textureMgr->getTexture(L"sand_c");
+	textures[6] = textureMgr->getTexture(L"mulch_c");
+	textures[7] = textureMgr->getTexture(L"gravel_c");
+	textures[8] = textureMgr->getTexture(L"savan_c");
+
+	// normal/height maps
+	textures[9] = textureMgr->getTexture(L"grass_n");
+	textures[10] = textureMgr->getTexture(L"stone_n");
+	textures[11] = textureMgr->getTexture(L"snow_n");
+	textures[12] = textureMgr->getTexture(L"rock_n");
+	textures[13] = textureMgr->getTexture(L"water_n");
+	textures[14] = textureMgr->getTexture(L"sand_n");
+	textures[15] = textureMgr->getTexture(L"mulch_n");
+	textures[16] = textureMgr->getTexture(L"gravel_n");
+	textures[17] = textureMgr->getTexture(L"savan_n");
+
+	// flora	(use "oak2.png" etc for low res textures)								
+	textureMgr->loadTexture(L"grass", L"res/flora/grass.png");
+	textureMgr->loadTexture(L"pine", L"res/flora/pine.png");
+	textureMgr->loadTexture(L"beech_n", L"res/flora/pbr/beech_n.png");
+	textureMgr->loadTexture(L"beech_c", L"res/flora/pbr/beech_c.png");
+
+	trees[0] = textureMgr->getTexture(L"grass");
+	trees[1] = textureMgr->getTexture(L"pine");
+	trees[2] = textureMgr->getTexture(L"beech_n");
+	trees[3] = textureMgr->getTexture(L"beech_c");
+
+	textureMgr->loadTexture(L"cloud", L"res/nice textures/cloud.png");
+	cloudTexture = textureMgr->getTexture(L"cloud");
+	textureMgr->loadTexture(L"rain", L"res/nice textures/rain.png");
+	rainTexture = textureMgr->getTexture(L"rain");
+	textureMgr->loadTexture(L"macro", L"res/macro_variation.png");
+	macroTexture = textureMgr->getTexture(L"macro");
+	//textureMgr->loadTexture(L"foo", L"res/test.png");
+	//cloudTexture = textureMgr->getTexture(L"foo");
+}

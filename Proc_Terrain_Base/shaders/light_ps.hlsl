@@ -334,6 +334,8 @@ float4 main(InputType input) : SV_TARGET
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     // texture the mesh based on parameters
+    float aridness = ((input.temperature + 1.0) / 1.0) * (1.0 - input.humidity);
+    
     if (false)//|| (input.normal.y >= 1 && altitude > -1.1 && altitude < 1.1))// water
     {
         textureColour.b = 0.85;//(input.world_position.z / 100);
@@ -343,7 +345,6 @@ float4 main(InputType input) : SV_TARGET
     }
     else // not water
     {// blend the textures based on biome parameters, and using the heightmap of each texture (height blend) for more realistic texturing
-        float aridness = ((input.temperature + 1.0) / 8.0) + (1.0 - input.humidity);
         // try simplifying biome texturing by ruling out pure biome areas first
         if (input.steepness <= 0.09) {
             // steep: cliff
@@ -360,6 +361,7 @@ float4 main(InputType input) : SV_TARGET
             // flat + beachy, high noise: sand
             textureColour = Tex(sand.albedo_specular, uv);
             textureNormal = Tex(sand.normal_height, uv);
+            textureColour = tSand.Sample(s0, uv.texY);
 
         }
         else if (input.steepness >= 0.95 && aridness >= 1 && input.temperature >= 1) {
@@ -372,9 +374,9 @@ float4 main(InputType input) : SV_TARGET
         // }
          else {
             //  // ((rock or cliff,a,b) or (snow or ((sand or gravel,a,b) or (grass or grass2,a,b),a,b),a,b),a,b) 
-            currentMat = heightBlend(heightBlend(heightBlend(heightBlend(stone, sand, input.noise, uv), heightBlend(heightBlend(grass2, grass, input.noise2, uv), heightBlend(rock, savan, 0.86 * (input.temperature + 1), uv), aridness, uv), input.beachness, uv), snow, input.snowness, uv), cliff, 1 - input.steepness, uv);
+            currentMat = heightBlend(heightBlend(heightBlend(heightBlend(stone, sand, input.noise, uv), heightBlend(heightBlend(grass2, grass, input.noise2, uv), heightBlend(rock, savan, 0.86 * (input.temperature + 1), uv), saturate(aridness *2.0), uv), input.beachness, uv), snow, input.snowness, uv), cliff, 1 - input.steepness, uv);
             //currentMat = heightBlend(savan,grass2 , input.temperature / 22.4, uv);
-
+            
             textureColour = currentMat.albedo_specular; //float4(snowness, snowness, snowness, 1.0); //
             textureNormal = currentMat.normal_height;
             //textureShine = currentMat.specular;
@@ -391,10 +393,29 @@ float4 main(InputType input) : SV_TARGET
     lightColour = calculateLighting(-sunlight.direction, input.normal + textureNormal.xyz, sunlight.colour);//calculateLighting(-lightDirection, input.normal + textureNormal, diffuseColour); 
 
     ///-- added biome colour effects --///
-    float variety = (tWater.Sample(s0, uv.texY * 0.002).g + 0.5) * (tWater.Sample(s0, uv.texY * 0.05).r + 0.5) * (tWater.Sample(s0, uv.texY * 0.2).b + 0.5); 
+    float variety = (1.8*tWater.Sample(s0, uv.texY * 0.0002).g + 0.1) * (tWater.Sample(s0, uv.texY * 0.05).r + 0.5) * (tWater.Sample(s0, uv.texY * 0.2).b + 0.5); 
         
     
      //add wetness effects at beach
+    if (true &&  input.snowness < 0.45 && altitude >0) // if pixel is grey
+    {// rock sandiness and soil moisture
+        
+        // get pixel grayness (saturation)
+        float rockness =0.5+ 0.5* ((max(textureColour.r, max(textureColour.g, textureColour.b))) - (min(textureColour.r, min(textureColour.g, textureColour.b)))) / (1 - abs(3 * length(textureColour.rgb) - 1));
+        float3 new_mineral_col = textureColour.rgb;
+        float redness = saturate(input.temperature + bfm(input.world_position / (700.3 * scale + variety), 4)); // iron content
+        float darkness = saturate(input.humidity + input.noise); // carbon content
+        variety *= 0.3;
+        new_mineral_col.r = min(new_mineral_col.r / (1.5 - redness), new_mineral_col.g * 1.25);
+        new_mineral_col.g = min(new_mineral_col.g / (1.5 - saturate((0.5+ aridness + input.noise2 + variety)*0.3)), new_mineral_col.r * 0.92);
+        new_mineral_col.b = lerp(new_mineral_col.g * new_mineral_col.b, new_mineral_col.g * 0.9, redness);
+        //new_mineral_col.b /= max(variety+ 0.3 + input.humidity * (1 - input.snowness) * 2, 1.0);
+        //new_mineral_col.g /= max(variety+ 0.2 + input.humidity * (1 - input.snowness) * 1, 1.0);
+        new_mineral_col.rgb /= min(1 + pow(darkness + variety, 3.0) * 3.0, 1.75);
+        
+        
+        textureColour.rgb = lerp(saturate(new_mineral_col), textureColour.rgb, pow(saturate(rockness), 2.0f)); //
+    }
     if (true && altitude <= 2.2)
     {
         float depth = abs(altitude - 2.2);
@@ -407,33 +428,24 @@ float4 main(InputType input) : SV_TARGET
         lightColour.g /= 1 - depth * 0.005;//, 2.35;//min();
         lightColour.b /= 1 - depth * 0.0002;//, 1.2;//min();
     }
-    else if (true || textureColour.g > (textureColour.r + textureColour.b) / 1.35) // if pixel is green
+    
+    if (true || textureColour.g > (textureColour.r + textureColour.b) / 1.35) // if pixel is green (
     {// grass dryness
         float greenness = (1.5 * textureColour.g - length(textureColour.rb)) / textureColour.g;//2* textureColour.g - ((textureColour.r + textureColour.b) / 2.35);
         float4 newcol = textureColour;
-        newcol.r /= min(0.6 + input.humidity,1.2);
-        newcol.g /= max(0.95 + 0.5 + (input.temperature / 64), 0.5);
-        newcol.b /= 2 * max(0.95 + 0.5 + (input.temperature / 64), 0.5);
+        newcol.r /= max(0.95 + 0.5 + (input.temperature / 6), 0.5);
+        newcol.g /= min(0.6 + input.humidity,1.2);
+        newcol.b /= 2 * max(0.95 + 0.5 + (input.temperature / 6), 0.5);
         newcol.rgb *= lerp(float3(0.7, 0.66, 0.6), float3(1.0, 1.0, 1.0), variety);
-
-        textureColour = lerp(textureColour, saturate(newcol), pow(greenness, 2.0)); // //float4(0.7,0.1,0.8,1.0), float4(0.2, 0.8, 0.1, 1.0)
+        
+        textureColour = lerp(textureColour, saturate(newcol), pow(greenness, 1.0)); // //float4(0.7,0.1,0.8,1.0), float4(0.2, 0.8, 0.1, 1.0)
         //textureColour.rgb = greenness;
         //if (greenness > 1.0) textureColour.rg = greenness - 1;
         //if (greenness < 0.0) textureColour.rb = greenness + 1;
-    //*/
+    //* /
     }
-    if (true && /*textureColour.r > textureColour.b - 0.1 && textureColour.b > textureColour.g - 0.1 && textureColour.g > textureColour.r - 0.1 &&*/ input.snowness < 0.45) // if pixel is grey
-    {// rock sandiness and soil moisture
-        float rockness = ((max(textureColour.r, max(textureColour.g, textureColour.b))) - (min(textureColour.r, min(textureColour.g, textureColour.b)))) / (1 - abs(2 * length(textureColour.rgb) - 1));
-        float3 new_mineral_col = textureColour.rgb;
-        //float redness;
-        //float darkness;
-        variety *= 0.3;
-        new_mineral_col.b /= max(variety+ 0.3 + input.humidity * (1 - input.snowness) * 2, 1.0);
-        new_mineral_col.g /= max(variety+ 0.2 + input.humidity * (1 - input.snowness) * 1, 1.0);
-        textureColour.rgb /= min(max(2.46 + input.humidity * 3.5, 1.0),1.75);
-        textureColour.rgb = lerp(textureColour.rgb, new_mineral_col, pow(saturate(1-rockness),2.f));
-    }
+    
+
     ///     Topography shader
     if (false) {
         textureColour.g = pow((0.0008*input.world_position.y+1)*0.5,3);

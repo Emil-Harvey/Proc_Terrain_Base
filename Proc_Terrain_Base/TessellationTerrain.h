@@ -4,6 +4,10 @@
 #include <algorithm>
 #include <vector>
 
+
+#define CPU_TERRAIN_ENABLED //when this is enabled, heightmap is trasferred to CPU and mesh is displaced there.
+//#undef CPU_TERRAIN_ENABLED
+
 using std::swap;
 #define HEIGHTMAP_DIM 4096 //1600
 typedef std::array<uint8_t, HEIGHTMAP_DIM*HEIGHTMAP_DIM * 16> HeightmapType;

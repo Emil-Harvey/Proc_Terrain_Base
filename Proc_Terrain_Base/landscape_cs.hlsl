@@ -7,7 +7,8 @@ cbuffer DataBuffer : register(b0)
     float scale;
     float time;
     int tessellationFactor;
-    float3 manipulationDetails;
+    float2 manipulationDetails;
+    float amplitude;
     float2 globalPosition;/// 
     float planetDiameter;
     float pixel_vertex_scale; //padding_;
@@ -131,15 +132,15 @@ float get_alt_terrain_height(float2 input, float octaves) // a revised terrain a
     const float mountain_noise = 1.0-abs(2.0 * NoiseTexture(input, 3.6 / scale_coeff, 8, roughness_noise, distortion_noise));// 
     const float valley_noise = abs(2.0 * NoiseTexture(alt_input, 3.6 / scale_coeff, 8, roughness_noise, distortion_noise));//0.5+0.5*
     height = mountain_noise * valley_noise;//
-    
+    const float c_s = 0.25; // continent_scale
     const float continental_noise = lerp(
-        flow(input / (4900.7 * scale_coeff), 5) + (0.2 * bfm(input / (500 * scale_coeff), octaves)),
-        1 * (bfm(input / (4900.7 * scale_coeff), 6) + (0.2 * NoiseTexture(input, 0.067 / scale_coeff, 8, 0.39589, min(distortion_noise, 0.7)))), perlin(input / (919.7 * scale_coeff)));
+        flow(input / (490.7 * scale_coeff * c_s), 5) + (0.2 * bfm(input / (50 * scale_coeff * c_s), octaves)),
+        1 * (bfm(input / (490.7 * scale_coeff * c_s), 6) + (0.2 * NoiseTexture(input, 0.067 / scale_coeff, 8, 0.39589, min(distortion_noise, 0.7)))), perlin(input / (91.97 * scale_coeff * c_s)));
 
     // the lower this value (0.0), the more 'marbled' the terrain, creating swirly rivers and archipelagos;
     // the higher the value (1.0), the more regular the terrain, far fewer islands or river deltas.
     // low values -> western scotland; high values -> east coast scotland. 
-    const float macro_vary_noise = saturate(1.f+NoiseTexture(alt_input, 0.66 / scale_coeff, 7, roughness_noise, distortion_noise)- (1.0*continental_noise));
+    const float macro_vary_noise = saturate(1.3f+NoiseTexture(alt_input, 0.066 / scale_coeff, 7, roughness_noise, distortion_noise)- (1.0*continental_noise));
 
     height = /*smooth*/max(macro_vary_noise + height, macro_vary_noise * height);
 
@@ -224,11 +225,11 @@ void main(int3 groupThreadID : SV_GroupThreadID,
 
 	
 
-    output.a = height * scale* 0.5;
-    output.r = max(height / (0.06f * scale), 0); 
+    output.a = 1+ height * scale* 0.5;
+    output.r = max(height / (amplitude * scale), 0);
 
-    output.g = slope;
-    output.b = macro_height/100.0;
+    output.g = max(height / (2 * scale), 0);
+    output.b = max(height / (amplitude), 0);
     //if (height < 0) { output.b = 1+height; }
     /// output.rgb -> humidity & wind?
 

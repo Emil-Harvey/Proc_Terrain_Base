@@ -51,7 +51,7 @@ float calculateLOD(float3 v)// inspired by frank luna
     ///float3 fwd = float3(viewMatrix[0][2], viewMatrix[1][2], viewMatrix[2][2]);// camera forward
     ///float infrontness = abs(length(normalize(fwd) + normalize(v - viewpos))) ;//viewangle = 1- saturate(cross(float3(viewMatrix[0][2], 0, viewMatrix[2][2]), normalize(v - viewpos)));
     float dist =  sqrt(length(v - viewpos)); // how near the cam is
-    float LOD = /*saturate(infrontness - 0.8)* */ (1 - saturate((dist - manipulationDetails.y) / (manipulationDetails.y - manipulationDetails.z))); // (dist - near threshold) / (near threshold - far theshold)
+    float LOD = /*saturate(infrontness - 0.8)* */ (1 - saturate((dist - manipulationDetails.y) / (manipulationDetails.y - manipulationDetails.x))); // (dist - near threshold) / (near threshold - far theshold)
     
     return pow(2, lerp(0, tessellationFactor, LOD));
     //tesselation factor will be 2^n, where 0 <= n <= 6 & is based on the distance of the patch (maxing out at 250, with no tess, minimum at 40, with 2^6=64 tes'ns) 

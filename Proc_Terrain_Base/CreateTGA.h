@@ -51,9 +51,15 @@ static void create_raw(const char* filename, uint32_t width, uint32_t height, fl
 
 	// no header
 
-	for (unsigned int i = 0; i < width * height; i++)
+	for (unsigned int i = 0; i < width * height * sizeof(float); i++)
 	{
-		fputc(data[i], fp);		
+		fputc(((uint8_t*)data)[i], fp);		
 	}
 	fclose(fp);
+}
+static void open_raw(const char* filename, uint32_t width, uint32_t height, float* out_data) {
+	FILE* fp = NULL;
+	// MSVC prefers fopen_s, but it's not portable
+	//fp = fopen(filename, "wb");
+	fopen_s(&fp, filename,"r");
 }

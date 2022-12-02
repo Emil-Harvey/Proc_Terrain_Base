@@ -1,8 +1,6 @@
 // Application.h
 #pragma once
 
-#define CPU_TERRAIN_ENABLED //when this is enabled, heightmap is trasferred to CPU and mesh is displaced there.
-//#undef CPU_TERRAIN_ENABLED
 
 // Includes
 #include "DXF.h"	// include dxframework
@@ -50,7 +48,8 @@ protected:
 	void initTextures();
 
 	void TransferHeightmapToCPU();
-	void QuadtreeHeightmap( QuadtreeNode* node_to_render);//const float size, const XMFLOAT2 position
+	void QuadtreeHeightmap( QuadtreeNode* node_to_render, const char* filename);//const float size, const XMFLOAT2 position
+	void RecursiveHeightmapExport(QuadtreeNode* node_to_render, string namePrefix = "Exported Data/0000");
 
 	static inline float lerp(const float& a, const float &b, const float &x){
 		return (a + x * (b - a));

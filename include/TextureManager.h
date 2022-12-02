@@ -15,7 +15,7 @@
 #include <string>
 #include <fstream>
 #include <vector>
-#include <map>
+#include <unordered_map>
 //#include "Texture.h"
 
 using namespace DirectX;
@@ -39,7 +39,7 @@ private:
 	ID3D11Device* device;
 	ID3D11DeviceContext* deviceContext;
 
-	std::map<wchar_t*, ID3D11ShaderResourceView*> textureMap;
+	std::unordered_map<wchar_t*, ID3D11ShaderResourceView*> textureMap;
 	ID3D11Texture2D *pTexture;
 };
 

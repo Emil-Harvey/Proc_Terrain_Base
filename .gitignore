@@ -600,3 +600,5 @@ paket-files/
 # JetBrains Rider
 .idea/
 *.sln.iml
+*.tga
+Proc_Terrain_Base/imgui.ini

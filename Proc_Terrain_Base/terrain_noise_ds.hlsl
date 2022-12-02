@@ -181,7 +181,7 @@ OutputType main(ConstantOutputType input, float3 uvwCoord : SV_DomainLocation, c
     if (abs(output.world_position.x) < 7500.0 && abs(output.world_position.z) < 7500.0) {
         heightmapSampled = HEIGHT.SampleLevel(s0, (output.world_position.xz / TERRAIN_SIZE) + 0.5, 0); // vertexPosition.xz//
         //if (flags <0)
-        //    output.world_position.y = heightmapSampled.a;
+            output.world_position.y = heightmapSampled.a;
     }
     else {
         heightmapSampled = HEIGHT.SampleLevel(s0, (output.world_position.xz / TERRAIN_SIZE) + 0.5, 0); // vertexPosition.xz//
@@ -257,7 +257,7 @@ OutputType main(ConstantOutputType input, float3 uvwCoord : SV_DomainLocation, c
         + 3.25*(cos(radians(time)) * -sin(latitude * 0.5))) )//      <----- needs work
         * scale;
     // this represents temperature/climate, specifically how cold
-    output.snowness = pow(saturate(0.5 / scale * (0.2 * altitude - 7.1181*bfm(seedc.xz / (scale * 20), 3) - snowline)), 3.0 );
+        output.snowness = pow(saturate(0.5 / scale * (0.2 * altitude - 7.1181 * scale * (bfm(seedc.xz / (scale * 30), 3) + (bfm(seedc.xz / (scale * 15.7), 3)/scale)) - snowline)), 3.0);
     //  apply deep snow effect on flat ground (raise vertices)
    /// output.world_position.y += max(output.snowness * output.steepness - 0.5, 0) * scale;
     
@@ -278,7 +278,7 @@ output.humidity += pow((output_humidity - 0.5) * 1.75, 5) + 0.45;// shift most v
         output.snowness = 0.0; // avoid snow underwater lol
     }
 //      noise to determine between plains and woodland, slightly higher chance of the former
-    output.noise2 =  -0.1+ 1.2*saturate(output.humidity * pow(1 - bfm(seedc.xz / (scale * 59), 4), 3));
+    output.noise2 =  -0.1+ 1.2*saturate(output.humidity * pow(1 - bfm(seedc.xz / (scale * 259.1), 6), 3));
 
     // similar noise for beach pebbles, but offset by 99 so the noise does not line up
     output.noise = saturate(pow(1 - bfm(seedc.xz / (scale * 60), 3), 3)+perlin(seedc.xz / (scale * 211.1171))+ 0.3);//pow(saturate(1 - bfm(99 + coords / (scale * 12), 4)), 3);
