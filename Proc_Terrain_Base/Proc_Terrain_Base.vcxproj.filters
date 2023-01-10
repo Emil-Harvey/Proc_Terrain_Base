@@ -164,7 +164,10 @@
     <ClInclude Include="CreateTGA.h">
       <Filter>Header Files\Utility</Filter>
     </ClInclude>
-    <ClInclude Include="Noise.h">
+    <ClInclude Include="Simplex.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\..\OneDrive - Nequinox Studios\Documents\GitHub\Proc_Terrain_Base\Proc_Terrain_Base\Noise.h">
       <Filter>Header Files\Utility</Filter>
     </ClInclude>
   </ItemGroup>

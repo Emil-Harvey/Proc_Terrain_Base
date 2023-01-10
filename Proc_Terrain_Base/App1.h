@@ -24,6 +24,8 @@
 #include "CreateTGA.h"
 //#include <wrl\client.h>// ComPtr
 #include <array>
+#include "Noise.h"
+#include <thread>
 
 class App1 : public BaseApplication
 {
@@ -48,8 +50,10 @@ protected:
 	void initTextures();
 
 	void TransferHeightmapToCPU();
-	void QuadtreeHeightmap( QuadtreeNode* node_to_render, const char* filename);//const float size, const XMFLOAT2 position
+	void CreateHeightmapOnCPU();
+	void QuadtreeHeightmap( QuadtreeNode* node_to_render, const char* filename = "Exported Data/test.tga", bool isRAW = false);//const float size, const XMFLOAT2 position
 	void RecursiveHeightmapExport(QuadtreeNode* node_to_render, string namePrefix = "Exported Data/0000");
+	void lammmbda(int a, int b);
 
 	static inline float lerp(const float& a, const float &b, const float &x){
 		return (a + x * (b - a));
@@ -111,6 +115,7 @@ private:
 	//bool autoSmooth = true;
 	bool DepthOfField;
 	bool erosion_enabled = false;
+	bool isHeightmapRAW = false;
 	//
 	///float mountainPoint = 76.0;
 	///float minReducedHeight = 38;
@@ -138,9 +143,9 @@ private:
 	//
 	ID3D11ShaderResourceView* curHeightmapSRV;
 	D3D11_MAPPED_SUBRESOURCE heightmap_mappedResource;
-	const int MAP_DIM = 4096;
+	const int MAP_DIM =4096; // 512;//
 	//std::array<XMFLOAT4, 1600 * 1600> pixelData{};
-	std::array<uint8_t, 4096 * 4096 * 16> pixelData{};
+	std::array<uint8_t, 4096 * 4096 * 16> pixelData{};//512*512*16> pixelData{};//
 };
 
 

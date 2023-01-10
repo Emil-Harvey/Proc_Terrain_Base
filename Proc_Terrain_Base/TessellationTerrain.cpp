@@ -167,17 +167,40 @@ void TessellationTerrain::initBuffers(ID3D11Device* device, XMFLOAT2 _pos, float
 	indices_array = 0;
 }
 
-	// sample the heightmap at the right location
-inline void TessellationTerrain::sampleElevation(int startPixelU, int startPixelV, float _size, float & positionX, float & positionZ,  float &elevation) //, EdgeFlags flags
+	// sample the heightmap at the right location.
+inline void TessellationTerrain::sampleElevation(int startPixelU, int startPixelV, float _size, float & positionX, float & positionZ,  float &elevation, XMFLOAT3& normal) //, EdgeFlags flags
 {
+#ifdef  CPU_TERRAIN_ENABLED
 	if (_heightmap) {
 
-
-		int samplePoint = SamplePoint(startPixelU, startPixelV, _size, positionX, positionZ);
+		const int samplePoint = SamplePoint(startPixelU, startPixelV, _size, positionX, positionZ);
 		
-		elevation = ((XMFLOAT4*)_heightmap->data())[max(samplePoint, 0)].w;// alpha channel of heightmap
+		elevation = ((XMFLOAT4*)_heightmap->data())[clamp(samplePoint, 0, HEIGHTMAP_EXTENT)].w;// alpha channel of heightmap
 
+		/// Calculate normal.
+		float h = 1.0/ 5.0f; // 1/size of plane/quad (arbitrary)
+
+	    // calculate the tangent & bitangent using the heightmap    
+		XMFLOAT3 tangent;//XMVECTOR
+		XMFLOAT3 bitangent;//XMVECTOR
+		const int ux = samplePoint-1; //SamplePoint(startPixelU, startPixelV, _size, positionX-h, positionZ);//neighbour to left
+		const int vx = samplePoint+1; //SamplePoint(startPixelU, startPixelV, _size, positionX+h, positionZ); //neighbour to right
+		const float xdy = ((XMFLOAT4*)_heightmap->data())[clamp(ux, 0, HEIGHTMAP_EXTENT)].w - 1 * ((XMFLOAT4*)_heightmap->data())[clamp(vx, 0, HEIGHTMAP_EXTENT)].w;
+		//tangent = XMVector3NormalizeEst(XMLoadFloat3(&XMFLOAT3(2 * h, xdy, 0)));
+		XMStoreFloat3( &tangent, XMVector3NormalizeEst(XMLoadFloat3(&XMFLOAT3(2 * h, xdy, 0))) );
+		/// same for bitangent but in z dimension
+		const int uz = samplePoint - HEIGHTMAP_DIM;//SamplePoint(startPixelU, startPixelV, _size, positionX, positionZ-h);//behind
+		const int vz = samplePoint + HEIGHTMAP_DIM;//SamplePoint(startPixelU, startPixelV, _size, positionX, positionZ - h);//in front
+		const float zdy = ((XMFLOAT4*)_heightmap->data())[clamp(uz, 0, HEIGHTMAP_EXTENT)].w - 1 * ((XMFLOAT4*)_heightmap->data())[clamp(vz, 0, HEIGHTMAP_EXTENT)].w;
+		//bitangent = XMVector3NormalizeEst(XMLoadFloat3(&XMFLOAT3(0, zdy, -2 * h)));
+		XMStoreFloat3( &bitangent, XMVector3NormalizeEst(XMLoadFloat3(&XMFLOAT3(0, zdy, -2 * h))) );
+		//auto ggg = XMVector3Cross(tangent, bitangent);
+		XMFLOAT3 ggg = CrossV3(tangent, bitangent);
+		XMStoreFloat3(&normal, XMVector3Normalize( XMLoadFloat3(&ggg) ));//Set normal to calculated value
 	}
+#else
+	//elevation = Noise::terrain_height(positionX * _size, elevation, positionZ * _size, 1) *100.f;
+#endif // CPU_TERRAIN_ENABLED
 }
 // create the border vertices of the mesh
 void TessellationTerrain::BuildEdge(std::vector<VertexType>& vertices, std::vector<unsigned long>& indices, Direction dir, const int detail_difference, int pU, int pV, float s, int &index )
@@ -187,7 +210,7 @@ void TessellationTerrain::BuildEdge(std::vector<VertexType>& vertices, std::vect
 	float u = 0;
 	float v = 0;
 	const float unit = 0.5;
-	const int inc = (is_S_or_E(dir)) ? -1 : 1 ;
+	const int inc = (is_S_or_E(dir)) ? -1 : 1 ; // increment direction
 	//int detail_difference = 1; Direction dir = NORTH;
 	// default case: no LOD difference at the edge
 	

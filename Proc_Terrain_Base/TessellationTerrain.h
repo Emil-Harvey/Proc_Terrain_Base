@@ -3,13 +3,14 @@
 #include <array>
 #include <algorithm>
 #include <vector>
-
+#include "noise.h"
 
 #define CPU_TERRAIN_ENABLED //when this is enabled, heightmap is trasferred to CPU and mesh is displaced there.
-//#undef CPU_TERRAIN_ENABLED
+#undef CPU_TERRAIN_ENABLED
 
 using std::swap;
-#define HEIGHTMAP_DIM 4096 //1600
+#define HEIGHTMAP_DIM 4096 //1600 //512 //
+#define HEIGHTMAP_EXTENT (HEIGHTMAP_DIM * HEIGHTMAP_DIM - 1)
 typedef std::array<uint8_t, HEIGHTMAP_DIM*HEIGHTMAP_DIM * 16> HeightmapType;
 
 template <class Type>
@@ -37,7 +38,7 @@ enum Corner // AKA QuadtreeIndex
 // reverse the binary of a 2 bit number: 2 (10) becomes 1 (01) etc
 #define binReverse(b) ((b & 2) >> 1 | (b & 1) << 1)
 
-
+#define clamp(x, a, b) (x<a? a: x>b? b:x)
 
 class TessellationTerrain :
     public PlaneMesh
@@ -66,17 +67,16 @@ public:
 
 protected:
     void initBuffers(ID3D11Device* device, XMFLOAT2 pos, float size, EdgeFlags EdgeLODTransitionFlags);
-    static void sampleElevation(int startPixelU, int startPixelV, float _size, float& positionX, float& positionZ, float& elevation);
-    
-    static void BuildEdge(std::vector<VertexType>& vertices, std::vector<unsigned long>& indices, Direction dir, const int detail_difference, int startPixelU, int startPixelV, float _size, int &index);
+    static void sampleElevation(int startPixelU, int startPixelV, float _size, float& positionX, float& positionZ, float& elevation, XMFLOAT3& normal);
+
+    static void BuildEdge(std::vector<VertexType>& vertices, std::vector<unsigned long>& indices, Direction dir, const int detail_difference, int startPixelU, int startPixelV, float _size, int& index);
 
     /// calculate the pixel number to sample based on the given vertex position 
     static inline int SamplePoint(const int& startPixelU, const int& startPixelV, const float& _size, const float& positionX, const float& positionZ)
     {
-        return min(
+        return (
             (startPixelU + (positionX * _size * HEIGHTMAP_DIM)) +
-            (startPixelV + (positionZ * _size * HEIGHTMAP_DIM)) * HEIGHTMAP_DIM,
-            HEIGHTMAP_DIM * HEIGHTMAP_DIM - 1);
+            (startPixelV + (positionZ * _size * HEIGHTMAP_DIM)) * HEIGHTMAP_DIM);
     }
     static void RotateIndices(int& x, int& y, const Direction rotation)
     {
@@ -88,15 +88,15 @@ protected:
             return;
         case EAST: // reflect diagonally
             swap(x, y);
-            y = grid_resolution -1 - y;
+            y = grid_resolution - 1 - y;
             return;
         case SOUTH: // flip both
-            x = grid_resolution -1 - x;
-            y = grid_resolution -1 - y;
+            x = grid_resolution - 1 - x;
+            y = grid_resolution - 1 - y;
             return;
         case WEST: // reflect diagonally, flip horizontally
             swap(x, y);
-            x = grid_resolution -1 - x;
+            x = grid_resolution - 1 - x;
             return;
         }
     }
@@ -108,28 +108,29 @@ protected:
             return c; // no rotation
         case EAST:
             if (c == 3) return northwest;
-            return Corner( binReverse(int(c)) ^ 1 ); // reflect diagonally, flip
+            return Corner(binReverse(int(c)) ^ 1); // reflect diagonally, flip
         case SOUTH:
-            return Corner(int(c)^3); // flip both axes
+            return Corner(int(c) ^ 3); // flip both axes
         case WEST:
             if (c == 3) return southeast;
-            return Corner( binReverse(int(c)) ^ 2 ); // reflect diagonally, flip horizontally
+            return Corner(binReverse(int(c)) ^ 2); // reflect diagonally, flip horizontally
         }
     }
     static void AddVertex(const int& startPixelU, const int& startPixelV, const float& u, const float& v, const float& x, const float& y, const float& size, int& index, std::vector<VertexType>& vertices, std::vector<unsigned long>& indices, Corner corner) {
         float elevation = 0.5f;
-        static const float increment = 1.0f / float(grid_resolution+1);
+        XMFLOAT3 normal{ 0,1,0 };
+        static const float increment = 1.0f / float(grid_resolution + 1);
         static const float unit = 0.5;
         float positionX, positionZ;
         positionX = (float)(isEast(corner) ? x + unit : x - unit) / float(grid_resolution);
-        positionZ = (float)(isNorth(corner)? y + unit : y - unit) / float(grid_resolution);      
+        positionZ = (float)(isNorth(corner) ? y + unit : y - unit) / float(grid_resolution);
 
-        sampleElevation(startPixelU, startPixelV, size, positionX, positionZ, elevation);
+        sampleElevation(startPixelU, startPixelV, size, positionX, positionZ, elevation, normal);
 
         VertexType vert;
         vert.position = XMFLOAT3(positionX, elevation, positionZ);
-        vert.texture = XMFLOAT2(isEast(corner) ? u + increment : u, isNorth(corner) ? v + increment : v);//vert.texture = XMFLOAT2(u + increment, v + increment);
-        vert.normal = XMFLOAT3(0.0, 1.0, 0.0);
+        vert.texture = XMFLOAT2(isEast(corner) ? u + increment : u, isNorth(corner) ? v + increment : v);
+        vert.normal = normal; // XMFLOAT3(0.0, 1.0, 0.0);
         vertices.push_back(vert);
         indices.push_back(index);
         index++;
@@ -142,5 +143,14 @@ protected:
     static HeightmapType* _heightmap;
     XMFLOAT2* _positionOfDetail;
     //*static*/ float total_size;
+
+    static XMFLOAT3 CrossV3(XMFLOAT3& V1, XMFLOAT3& V2) {
+        XMFLOAT3 Result;
+        Result.x = (V1.y * V2.z) - (V1.z * V2.y);
+        Result.y = (V1.z * V2.x) - (V1.x * V2.z);
+        Result.z = (V1.x * V2.y) - (V1.y * V2.x);
+        //Result.w = 0;
+        return Result;
+    }
 };
 

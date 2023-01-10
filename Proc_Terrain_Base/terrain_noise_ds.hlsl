@@ -53,7 +53,7 @@ struct OutputType
     /*noperspective*/ float2 texZ : TEXCOORD2;
     float3 blendweights : NORMAL0;
     float3 normal : NORMAL1;
-
+    
     float steepness : PSIZE0;
     float temperature : PSIZE6;
     float snowness : PSIZE1;
@@ -61,9 +61,10 @@ struct OutputType
     float noise : PSIZE3;
     float noise2 : PSIZE4;
     float humidity : PSIZE5;
+    float roughness : PSIZE7; // landscape ruggedness
     float2 wind : TEXCOORD3;
 };
-
+#define W_P
 #define TERRAIN_SIZE 45000.0
 
 float bfm(float2 pos, int octaves);
@@ -80,7 +81,9 @@ float3 BarycentricInterpolate(float3 v[3], float3 barycentric)
     return BarycentricInterpolate(v[0], v[1], v[2],
         barycentric);
 }
-
+float2 angle(float dist, float angle_degrees){// creates 2d vector from angle & distance(length)
+    return float2(dist * sin(radians(angle_degrees)), dist * cos(radians(angle_degrees)));
+}
 float invsmoothstep(float y)
 {// fast inverse
     float yn = 2.0 * y - 1.0;
@@ -157,8 +160,7 @@ OutputType main(ConstantOutputType input, float3 uvwCoord : SV_DomainLocation, c
     ///*
     // Calculate the position of the new vertex against the world, view, and projection matrices. or do this in geo shader
     output.world_position = mul(float4(vertexPosition, 1.0f), worldMatrix); //float4(vertexPosition, 1.0f);  
-
-    
+    //DEBUG 1D mode: output.world_position.x = 2;
 
     // apply seed offset and/or position offset - to be used for noise. 
     /*const*/ float4 coords = output.world_position + float4(chunkPosOffset.x + globalPosition.x, 0, chunkPosOffset.y + globalPosition.y, 0);//
@@ -169,7 +171,7 @@ OutputType main(ConstantOutputType input, float3 uvwCoord : SV_DomainLocation, c
     /// will probably need to add distinct 'seed' offset so that seed doesn't interfere with Eqtr position etc. // what? // i think this has been done
 
     ///     DISPLACE VERTICES
-    //output.world_position.y = 1;
+    output.world_position.y = 1;
 
     int MaxOctaves = 12;// * sqrt(scale);//      scale the Detail & therefore efficiency of noise, over distance
     int MinOctaves = 1;
@@ -186,15 +188,30 @@ OutputType main(ConstantOutputType input, float3 uvwCoord : SV_DomainLocation, c
     else {
         heightmapSampled = HEIGHT.SampleLevel(s0, (output.world_position.xz / TERRAIN_SIZE) + 0.5, 0); // vertexPosition.xz//
         //if (flags < 0)
-        //    output.world_position.y = heightmapSampled.b;
+            output.world_position.y = heightmapSampled.a; //b;
     }
 
     //       CALCULATE NORMALS              Send the normal, light into the ps
-    if (octaves > 3)//
+        output.normal = calculateNormal(output.world_position.xz);
+    if (true || octaves > 3)//
     {
         ////output.normal.xyz = heightmapSampled.rgb;
-        output.normal = calculateNormal(output.world_position.xz);
-        // smooth normal by averaging neighbours
+        // calculate roughness
+        float h = 8.2 + sin(output.world_position.y);
+        float a = 0;
+        float inc = 45; //- (frac(dot(sin(output.world_position.xz), float2(81.881, output.world_position.y))) * 8.1); // pseudorandom increment; roughly 45deg
+        float AvgOfNeighbourHeights =
+        (
+            HEIGHT.SampleLevel(s0, ((output.world_position.xz + angle(h, a   )) / TERRAIN_SIZE) + 0.5, 0).a +
+            HEIGHT.SampleLevel(s0, ((output.world_position.xz + angle(h, a+inc)) / TERRAIN_SIZE) + 0.5, 0).a +
+            HEIGHT.SampleLevel(s0, ((output.world_position.xz + angle(h, a+inc)) / TERRAIN_SIZE) + 0.5, 0).a +
+            HEIGHT.SampleLevel(s0, ((output.world_position.xz + angle(h, a+inc)) / TERRAIN_SIZE) + 0.5, 0).a +
+            HEIGHT.SampleLevel(s0, ((output.world_position.xz + angle(h, a+inc)) / TERRAIN_SIZE) + 0.5, 0).a +
+            HEIGHT.SampleLevel(s0, ((output.world_position.xz + angle(h, a+inc)) / TERRAIN_SIZE) + 0.5, 0).a +
+            HEIGHT.SampleLevel(s0, ((output.world_position.xz + angle(h, a+inc)) / TERRAIN_SIZE) + 0.5, 0).a +
+            HEIGHT.SampleLevel(s0, ((output.world_position.xz + angle(h, a+inc)) / TERRAIN_SIZE) + 0.5, 0).a 
+        ) / 8.0f;// 
+        output.roughness = pow( abs(AvgOfNeighbourHeights - output.world_position.y) , 2.0 )/ 4.0;
 
     }
     else // this mesh is not being manipulated, so keep the normals as they were
@@ -255,13 +272,13 @@ OutputType main(ConstantOutputType input, float3 uvwCoord : SV_DomainLocation, c
 // snowline //height value - high near the middle (equator)     ::{ 70'- 550m; 45'- 3300m; Eqtr- 6000m }::
     const half snowline = (13.0 + 13.3 * ( cos(latitude)
         + 3.25*(cos(radians(time)) * -sin(latitude * 0.5))) )//      <----- needs work
-        * scale;
+        * (scale* /* temprary debug raise snowline */ 100.f);
     // this represents temperature/climate, specifically how cold
         output.snowness = pow(saturate(0.5 / scale * (0.2 * altitude - 7.1181 * scale * (bfm(seedc.xz / (scale * 30), 3) + (bfm(seedc.xz / (scale * 15.7), 3)/scale)) - snowline)), 3.0);
     //  apply deep snow effect on flat ground (raise vertices)
    /// output.world_position.y += max(output.snowness * output.steepness - 0.5, 0) * scale;
     
-    /*DEBUG: output.snowness = HEIGHT.SampleLevel(s0, (output.world_position.zx / 11520.0) + 0.5, 0).b;//heightmapSampled.b;*/
+    
     
     // absolute humidity - relative humidity is less meaningful(?)         <-- fix this algorithm?
     output.humidity = 0.5*(1.0+cos(latitude * 3.10f));
@@ -275,6 +292,7 @@ output.humidity += pow((output_humidity - 0.5) * 1.75, 5) + 0.45;// shift most v
 //output.humidity = heightmapSampled.r;
     }
     else {
+        output.humidity = 0.0;
         output.snowness = 0.0; // avoid snow underwater lol
     }
 //      noise to determine between plains and woodland, slightly higher chance of the former
@@ -297,21 +315,23 @@ output.humidity += pow((output_humidity - 0.5) * 1.75, 5) + 0.45;// shift most v
     output.blendweights = pow(saturate(output.blendweights), transitionSpeed);
     const float divisor = output.blendweights.x + output.blendweights.y + output.blendweights.z;
     output.blendweights /= divisor;
-    output.texX = (output.world_position.yz + nLength) * texScale;
-    output.texY = (output.world_position.zx + nLength) * texScale;
-    output.texZ = (output.world_position.xy + nLength) * texScale;
+    output.texX = (coords.yz + nLength) * texScale;
+    output.texY = (coords.zx + nLength) * texScale;
+    output.texZ = (coords.xy + nLength) * texScale;
    // output.tex = output.world_position.xz/16.0;
     
     ////fish-eye effect?
     //output.world_position.y -= length(viewpos.xz - output.world_position.xz);
 
     // convert to screen coordinates, after snow height etc is applied
+    //output.world_position = mul(float4(vertexPosition, 1.0f), worldMatrix);
     output.position = mul(output.world_position, viewMatrix);
     output.position = mul(output.position, projectionMatrix);
-
+    
     //*/
     return output;
 }
+
 
 
 ///////////////////////--------------------------//////////////////////////

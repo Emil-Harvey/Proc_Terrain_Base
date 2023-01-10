@@ -213,6 +213,7 @@
     <ClCompile Include="TnDepthShader.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\..\..\OneDrive - Nequinox Studios\Documents\GitHub\Proc_Terrain_Base\Proc_Terrain_Base\Noise.h" />
     <ClInclude Include="App1.h" />
     <ClInclude Include="CloudShader.h" />
     <ClInclude Include="Compass.h" />
@@ -230,10 +231,6 @@
     <ClInclude Include="Frustrum.h" />
     <ClInclude Include="Grower.h" />
     <ClInclude Include="LightShader.h" />
-    <ClInclude Include="Noise.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClInclude>
     <ClInclude Include="QuadTreeClass.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
@@ -243,6 +240,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
     </ClInclude>
     <ClInclude Include="ShaderVariables.h" />
+    <ClInclude Include="Simplex.h" />
     <ClInclude Include="TerrainMesh.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>

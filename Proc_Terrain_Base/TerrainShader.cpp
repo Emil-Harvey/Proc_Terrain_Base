@@ -57,7 +57,7 @@ void TerrainShader::initShader(const wchar_t* vsFilename, const wchar_t* hsFilen
 	renderer->CreateSamplerState(&heightmapSamplerDesc, &heightmapSampleState);
 
 	// Create a texture sampler state description.
-	textureSamplerDesc.Filter = D3D11_FILTER_ANISOTROPIC; //D3D11_FILTER_MIN_MAG_MIP_POINT;
+	textureSamplerDesc.Filter = D3D11_FILTER_ANISOTROPIC; //D3D11_FILTER_MIN_MAG_MIP_POINT; //
 	textureSamplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
 	textureSamplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
 	textureSamplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;

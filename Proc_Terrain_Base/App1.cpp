@@ -294,7 +294,7 @@ bool App1::frame()
 	XMFLOAT2 camera_xz = { camera->getPosition().x, camera->getPosition().z };
 	static XMFLOAT2 old_camera_xz;
 	if(camera_xz.x != old_camera_xz.x && camera_xz.y != old_camera_xz.y)
-		qt_Terrain->Reconstruct(renderer->getDevice(), renderer->getDeviceContext(), 2, camera_xz);// careful of memory leak
+		//qt_Terrain->Reconstruct(renderer->getDevice(), renderer->getDeviceContext(), 2, camera_xz);// careful of memory leak
 		old_camera_xz = camera_xz;
 	}
 
@@ -341,6 +341,8 @@ bool App1::renderMinimap(bool erode_as_well)
 
 #ifdef CPU_TERRAIN_ENABLED
 	TransferHeightmapToCPU();
+#else
+	//CreateHeightmapOnCPU();
 #endif // CPU_TERRAIN_ENABLED
 
 	return true;
@@ -610,6 +612,18 @@ void App1::gui()
 	
 	//ImGui::Text("\nHigher scale 'magnifies' the terrain");
 	ImGui::SliderFloat("##Scale", &vars.Scale, 0.01f, 50, "Scale: %.4f", 2.5f);
+	if (ImGui::IsItemHovered()) {
+		ImGui::BeginTooltip();
+		ImGui::Text("Notes on scale:\n\
+	Scale is an 'inverse' value. The smaller the value, the\n\
+	more area is depicted by the heightmap.\n\
+	The magic number to convert landscapes into metric dimensions\n\
+	is 64: To calculatethe size of the heightmap, divide the\n\
+	resolution by the scale (%.2f), and then multiply the result\n\
+	by 64, to get the resolution in meters.\n\n\
+	the size of the current heightmap is: (%.2fm)", vars.Scale, 64 * MAP_DIM / vars.Scale);
+		ImGui::EndTooltip();
+	}
 
 		ImGui::Text("Seed:");
 		ImGui::SliderFloat("##x", &vars.seed.x, 0, 980000, "X Offset: %.2f");
@@ -629,6 +643,8 @@ void App1::gui()
 		textureMgr->exportToFile(L"Exported Data/heightmap1.png", curHeightmapSRV);
 			//(,curHeightmapSRV, ,L"Exported Data/heightmap1.png")//
 
+	}if (ImGui::Button("Create CPU heightmap")) {
+		CreateHeightmapOnCPU();
 	}
 
 	ImGui::SliderFloat("##latitude", &vars.GlobalPosition.y, -2.0f*vars.PlanetDiameter, 2.0f*vars.PlanetDiameter, "Latitude: %.2f", 3.0f);
@@ -637,13 +653,20 @@ void App1::gui()
 
 	ImGui::Begin("Quadtree Heightmap ");
 	QuadtreeNode* node_to_render = nullptr;
+
+	ImGui::Checkbox(isHeightmapRAW? "Export as: .raw":"Export as: .tga", &isHeightmapRAW);
+
 	if (ImGui::Button("LOD0-Root")) {
 		node_to_render = qt_Terrain->getRoot();
 		RecursiveHeightmapExport(node_to_render);//QuadtreeHeightmap(node_to_render);	
 	}
 	if (ImGui::Button("Root-Preview")) {
 		node_to_render = qt_Terrain->getRoot();
-		QuadtreeHeightmap(node_to_render,"preview.tga");
+		QuadtreeHeightmap(node_to_render,"Exported Data/preview.tga");
+	}
+	if (ImGui::Button("Reconstruct quadtree")) {
+		XMFLOAT2 camera_xz = { camera->getPosition().x, camera->getPosition().z };
+		qt_Terrain->Reconstruct(renderer->getDevice(), renderer->getDeviceContext(), 4, camera_xz);// careful of memory leak
 	}
 	ImGui::End();
 
@@ -703,11 +726,8 @@ void App1::gui()
 	ImGui::Begin("Options", &gameSettingsMenuActive);
 		ImGui::SliderFloat("##cams", camera->getSpeedScale(), 0.5f, 600.00f, "Camera Speed: %.2f", 3);
 
-
-		if (ImGui::Button("Toggle chunk & quad tree update")) {
-			chunkUpdatesEnabled = !chunkUpdatesEnabled;
-		}
-
+		ImGui::Checkbox("Toggle chunk & quad tree update", &chunkUpdatesEnabled);
+		
 	ImGui::End();
 
 
@@ -772,10 +792,49 @@ inline void App1::TransferHeightmapToCPU()
 	//return h;
 	renderer->getDeviceContext()->Unmap(staging_texture, 0);// prevent memory leak
 }
+void App1::lammmbda(int row, int MAP_DIM = 4096) {//
+	
+
+};
+
+void App1::CreateHeightmapOnCPU()
+{
+	/*const int thread_count = thread::hardware_concurrency();
+	std::vector<thread*> threads;//
+	for (int t = 0; t < min(thread_count, MAP_DIM); t++) {
+		threads.push_back(new std::thread(&App1::lammmbda, t, 4096));//
+	}
+	// wait for all threads to finish and delete them
+	for (thread* t : threads)
+	{
+		t->join();
+		delete t;
+	}*/
+	for (int row = 0; row < MAP_DIM; row++) {
+		for (int pixel = 0; pixel < MAP_DIM; pixel++) 
+		{
+			const int pixel_number = pixel + (row * MAP_DIM);
+			XMFLOAT3 coords = { vars.seed.x + (float(row) * 45000.f / (float)MAP_DIM), 1.0827356f, vars.seed.y + (float(pixel) * 45000.f / (float)MAP_DIM)};
+			
+			float height = Noise::terrain_height(vars.GlobalPosition.x +( coords.x / vars.Scale), coords.y, vars.GlobalPosition.y + (coords.z / vars.Scale), 16) * vars.Amplitude;
+			if (height > 8500)
+			{ 
+				height = 8488.2;
+			}
+			for (int c = 3; c < 4; c++) {
+				pixelData.data()[(pixel_number * 16) + 4 * c] = *(uint8_t*)(&height); /// convert float to 4 byte
+				pixelData.data()[(pixel_number * 16) + 4 * c + 1] = ((uint8_t*)(&height))[1];
+				pixelData.data()[(pixel_number * 16) + 4 * c + 2] = ((uint8_t*)(&height))[2];
+				pixelData.data()[(pixel_number * 16) + 4 * c + 3] = ((uint8_t*)(&height))[3];
+			}
+		}
+	}
+}
+
 
 // size: fraction<=1 of the quad proportional to the full mesh
 // position: world position of the quad center relative to the full mesh center
-void App1::QuadtreeHeightmap( QuadtreeNode* node, const char* filename)
+void App1::QuadtreeHeightmap( QuadtreeNode* node, const char* filename, bool isRAW)
 {
 	//
 	const float size = node->Size() / node->total_size;
@@ -791,62 +850,57 @@ void App1::QuadtreeHeightmap( QuadtreeNode* node, const char* filename)
 
 	TransferHeightmapToCPU();
 
-#define RAW 1
-#define TGA 0
-#define HEIGHTMAP_EXPORT_MODE RAW
 
-#if HEIGHTMAP_EXPORT_MODE == TGA
-	/// create grayscale TGA file from data (8 bit depth)
-	// Transfer Red channel to grayscale
-	uint8_t* pixelArrayGray = new uint8_t[4096 * 4096];//std::array<uint8_t, 4096 * 4096> pixelArrayGray;//uint8_t pixelArrayGray[4096 * 4096];
-	
-	constexpr float scale_factor = UINT_MAX / 128.0f;
-	constexpr unsigned int int32to8 = UINT_MAX / UINT8_MAX;
-	for (int p = 0; p < MAP_DIM * MAP_DIM * 4; p+=4) // only look at every 4th float, ie. the R of RGBA
-	{
-		// scale_factor is used to stretch the height values, so that the tallest height = UINT_MAX
-		float redValue = ((float*)pixelData.data())[p] * scale_factor;
-		// convert float to 32 bit uint, shrink values down to 8 bits, then cast to uint8
-		pixelArrayGray[p / 4] = uint8_t((uint32_t(redValue)) / int32to8);	
+
+	if (!isRAW) {
+		/// create grayscale TGA file from data (8 bit depth)
+		// Transfer Red channel to grayscale
+		uint8_t* pixelArrayGray = new uint8_t[4096 * 4096];//std::array<uint8_t, 4096 * 4096> pixelArrayGray;//uint8_t pixelArrayGray[4096 * 4096];
+
+		constexpr float scale_factor = UINT_MAX / 128.0f;
+		constexpr unsigned int int32to8 = UINT_MAX / UINT8_MAX;
+		for (int p = 0; p < MAP_DIM * MAP_DIM * 4; p += 4) // only look at every 4th float, ie. the R of RGBA
+		{
+			// scale_factor is used to stretch the height values, so that the tallest height = UINT_MAX
+			float redValue = ((float*)pixelData.data())[p] * scale_factor;
+			// convert float to 32 bit uint, shrink values down to 8 bits, then cast to uint8
+			pixelArrayGray[p / 4] = uint8_t((uint32_t(redValue)) / int32to8);
+		}
+
+		// write data to TGA file
+		tga_write(filename, MAP_DIM, MAP_DIM, pixelArrayGray, 1U); // 1 channel - grayscale
 	}
+	else {
+		/// create grayscale .raw file from data (32 bit depth)
+		// Transfer Red channel to grayscale
+		float* pixelArrayGray = new float[4096 * 4096];//std::array<uint8_t, 4096 * 4096> pixelArrayGray;//uint8_t pixelArrayGray[4096 * 4096];
 
-	// write data to TGA file
-	tga_write(filename, MAP_DIM, MAP_DIM, pixelArrayGray, 1U); // 1 channel - grayscale
+		constexpr float scale_factor = UINT_MAX / 1024.0f;
+		for (int p = 0; p < MAP_DIM * MAP_DIM * 4; p += 4) // only look at every 4th float, ie. the R of RGBA
+		{
+			// scale_factor is used to stretch the height values, so that the tallest height = UINT_MAX
+			pixelArrayGray[p / 4] = ((float*)pixelData.data())[p] * scale_factor;
+		}
 
-#elif HEIGHTMAP_EXPORT_MODE == RAW
-	/// create grayscale .raw file from data (32 bit depth)
-	// Transfer Red channel to grayscale
-	float* pixelArrayGray = new float[4096 * 4096];//std::array<uint8_t, 4096 * 4096> pixelArrayGray;//uint8_t pixelArrayGray[4096 * 4096];
-
-	constexpr float scale_factor = UINT_MAX / 1024.0f;
-	for (int p = 0; p < MAP_DIM * MAP_DIM * 4; p += 4) // only look at every 4th float, ie. the R of RGBA
-	{
-		// scale_factor is used to stretch the height values, so that the tallest height = UINT_MAX
-		pixelArrayGray[p / 4] = ((float*)pixelData.data())[p] * scale_factor;
+		create_raw(filename, MAP_DIM, MAP_DIM, pixelArrayGray);
 	}
-
-	create_raw(filename, MAP_DIM, MAP_DIM, pixelArrayGray);
-#endif
 
 }
 
 void App1::RecursiveHeightmapExport(QuadtreeNode* node, string namePrefix)
 {
 
+#define HEIGHTMAP_EXPORT_MODE isHeightmapRAW
+
 	const string suffix = (HEIGHTMAP_EXPORT_MODE ? ".raw" : ".tga");
 	const string filename = namePrefix + suffix;
 	
-	QuadtreeHeightmap(node, filename.c_str());
+	QuadtreeHeightmap(node, filename.c_str(), (bool) HEIGHTMAP_EXPORT_MODE);
 	
 	//base case
 	if (node->isLeaf()) return;
 
 	//else recurse
-	//for (int n = 0; n<4; n++) 
-	//{
-	//	//*node->Nodes()
-	//	//subnode
-	//}
 	RecursiveHeightmapExport(node->Nodes()->at(northwest).get(), namePrefix + ".0000");
 	RecursiveHeightmapExport(node->Nodes()->at(northeast).get(), namePrefix + ".0001");
 	RecursiveHeightmapExport(node->Nodes()->at(southeast).get(), namePrefix + ".0002");
@@ -887,7 +941,7 @@ void App1::initTextures() {
 	textureMgr->loadTexture(L"snow_c", L"res/nice textures/snow_/snow_as.png");
 	textureMgr->loadTexture(L"snow_n", L"res/nice textures/snow_/snow_nh.png");
 	//
-	textureMgr->loadTexture(L"rock_c", L"res/lofi textures/rock_/rock_c.png");
+	textureMgr->loadTexture(L"rock_c", L"res/nice textures/rock_/rock_as.png");
 	textureMgr->loadTexture(L"rock_n", L"res/nice textures/rock_/rock_nh.png");
 	//
 	textureMgr->loadTexture(L"water_c", L"res/nice textures/water_/water_as.png");
